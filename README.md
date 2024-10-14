@@ -161,3 +161,4 @@ storage.addResource(iron);
 Finalize the Resource, Building, Miner, Factory, and Storage entities.
 Develop a demo game showcasing the library's ease of use.
 Implement basic game state management (save/load).
+"scaffolding "
