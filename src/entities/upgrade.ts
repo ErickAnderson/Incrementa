@@ -2,6 +2,10 @@ import {Entity} from "./entity";
 
 /**
  * Upgrade class to apply effects to buildings, storage, or resources.
+ *
+ * @property {any} effect - The effect of the upgrade (e.g., increase rate, capacity).
+ * @property {Record<string, number>} cost - Cost of the upgrade.
+ * @extends {Entity}
  */
 export class Upgrade extends Entity {
     effect: any; // The effect of the upgrade (e.g., increase rate, capacity)

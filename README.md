@@ -209,3 +209,7 @@ storage.addResource(iron);
   Develop a demo game showcasing the library's ease of use.
   Implement basic game state management (save/load).
   "scaffolding "
+- Phase 2: Upgrades and Progression
+  Introduce the Upgrade entity.
+  Implement unlock conditions for entities.
+  Develop a simple prestige system.

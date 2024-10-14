@@ -1,17 +1,15 @@
-// import NodeJS from 'node:events';
-
 /**
  * Represents a Timer that processes time-based events globally, using delta time for accuracy.
  */
 export class Timer {
     // Total time the timer will run for, in milliseconds
-    private totalTime: number;
+    private readonly totalTime: number;
+
+    // The tick rate (in ms) that determines how often the timer checks progress
+    private readonly tickRate: number;
 
     // Time remaining for the timer, in milliseconds
     private remainingTime: number;
-
-    // The tick rate (in ms) that determines how often the timer checks progress
-    private tickRate: number;
 
     // Whether the timer is currently running
     private isRunning: boolean;
@@ -23,7 +21,7 @@ export class Timer {
     private lastTimestamp: number | null;
 
     // A list of callback functions to be executed when the timer finishes
-    private onCompleteCallbacks: (() => void)[];
+    private onCompleteCallbacks: Array<() => void>;
 
     // A list of callback functions to be executed when the timer is stopped
     private onStopCallbacks: (() => void)[];
@@ -36,35 +34,38 @@ export class Timer {
 
     /**
      * Constructs a Timer instance.
-     * @param totalTime - The total time the timer should run for (in milliseconds).
-     * @param tickRate - The rate at which the timer ticks (in milliseconds).
-     * @param onCompleteCallbacks - Optional array of functions to call when the timer finishes.
-     * @param onStopCallbacks - Optional array of functions to call when the timer is stopped.
-     * @param onUpdateCallbacks - Optional array of functions to call on every update tick.
+     * @param {Object} config - The configuration object for the timer.
+     * @param {number} config.totalTime - The total time the timer should run for (in milliseconds).
+     * @param {number} config.tickRate - The rate at which the timer should update (in milliseconds).
+     * @param {Array<() => void>} [config.onCompleteCallbacks] - An optional array of callback functions to execute when the timer completes.
+     * @param {Array<() => void>} [config.onStopCallbacks] - An optional array of callback functions to execute when the timer stops.
+     * @param {Array<() => void>} [config.onUpdateCallbacks] - An optional array of callback functions to execute on every update tick.
      */
-    constructor(
+    constructor(config: {
         totalTime: number,
         tickRate: number,
-        onCompleteCallbacks: (() => void)[] = [],
-        onStopCallbacks: (() => void)[] = [],
-        onUpdateCallbacks: (() => void)[] = []
-    ) {
-        this.totalTime = totalTime;
-        this.remainingTime = totalTime;
-        this.tickRate = tickRate;
+        onCompleteCallbacks: Array<() => void>,
+        onStopCallbacks: Array<() => void>,
+        onUpdateCallbacks: Array<() => void>
+    }) {
+        this.totalTime = config.totalTime;
+        this.remainingTime = config.totalTime;
+        this.tickRate = config.tickRate;
         this.isRunning = false;
         this.isPaused = false;
         this.lastTimestamp = null;
-        this.onCompleteCallbacks = onCompleteCallbacks;
-        this.onStopCallbacks = onStopCallbacks;
-        this.onUpdateCallbacks = onUpdateCallbacks;
+        this.onCompleteCallbacks = config.onCompleteCallbacks ?? [];
+        this.onStopCallbacks = config.onStopCallbacks ?? [];
+        this.onUpdateCallbacks = config.onUpdateCallbacks ?? [];
         this.globalTimerId = null;
     }
 
     /**
      * Starts the timer and updates based on delta time.
+     *
+     * @returns void
      */
-    start() {
+    start(): void {
         if (this.isRunning) return; // Avoid multiple starts
 
         this.isRunning = true;
@@ -78,9 +79,11 @@ export class Timer {
 
     /**
      * Stops the timer and calls any stop callbacks.
+     *
      * @param callStopCallbacks - If true, executes stop callbacks when the timer is stopped.
+     * @returns void
      */
-    stop(callStopCallbacks = true) {
+    stop(callStopCallbacks = true): void {
         if (this.globalTimerId) {
             clearInterval(this.globalTimerId);
             this.globalTimerId = null;
@@ -94,8 +97,10 @@ export class Timer {
 
     /**
      * Toggles the timer state between running and paused.
+     *
+     * @returns void
      */
-    toggle() {
+    toggle(): void {
         if (this.isPaused) {
             this.isPaused = false; // Resume
             this.lastTimestamp = Date.now(); // Reset timestamp to now for accurate timing
@@ -107,37 +112,31 @@ export class Timer {
     /**
      * Updates the timer based on delta time since the last tick.
      * If the timer is finished, it triggers the complete callbacks and restarts the timer.
-     * @param ongoing - Whether to restart the timer after it finishes. Defaults to true.
+     *
+     * @returns void
      */
-    private update(ongoing: boolean = true) {
-        if (this.isPaused || ! this.isRunning) return; // Skip update if paused
+    private update(): void {
+        if (this.isPaused || !this.isRunning) return; // Skip update if paused
 
         const now = Date.now();
         const deltaTime = now - (this.lastTimestamp || now);
         this.lastTimestamp = now;
 
-        // Call onUpdate callbacks if delta time is lower than tickRate
-        if (deltaTime < this.tickRate) {
-            this.onUpdateCallbacks.forEach((callback) => callback());
-        }
+        // Call onUpdate callbacks
+        this.onUpdateCallbacks.forEach((callback) => callback());
 
         this.remainingTime -= deltaTime;
 
         if (this.remainingTime <= 0) {
-            this.remainingTime = 0;
             this.complete();
-            if (ongoing) {
-                this.reset(); // Reset to start again
-                this.start(); // Restart the timer
-            }
         }
     }
 
     /**
      * Marks the timer as complete and triggers any completion callbacks.
      */
-    private complete() {
-        this.stop(false); // Stop without calling the stop callbacks
+    private complete(): void {
+        this.remainingTime = this.totalTime;
 
         // Execute completion callbacks
         this.onCompleteCallbacks.forEach((callback) => callback());
@@ -145,30 +144,45 @@ export class Timer {
 
     /**
      * Adds a new callback function to be executed when the timer finishes.
-     * @param callback - The callback function to add.
+     *
+     * @param callback Array<callback> callback - The callback function to add.
+     * @returns void
      */
-    addOnCompleteCallback(callback: () => void) {
-        this.onCompleteCallbacks.push(callback);
+    addOnCompleteCallback(callback: Array<() => void>): void {
+        if (Array.isArray(callback)) {
+            callback.forEach(
+                (cb) => {
+                    if (typeof cb === 'function') {
+                        this.onCompleteCallbacks.push(cb);
+                    }
+                }
+            )
+        }
     }
 
     /**
      * Adds a new callback function to be executed when the timer is stopped.
+     *
      * @param callback - The callback function to add.
+     * @returns void
      */
-    addOnStopCallback(callback: () => void) {
+    addOnStopCallback(callback: () => void): void {
         this.onStopCallbacks.push(callback);
     }
 
     /**
      * Adds a new callback function to be executed on every update tick.
+     *
      * @param callback - The callback function to add.
+     * @returns void
      */
-    addOnUpdateCallback(callback: () => void) {
+    addOnUpdateCallback(callback: () => void): void {
         this.onUpdateCallbacks.push(callback);
     }
 
     /**
      * Gets the progress of the timer as a percentage (between 0 and 1).
+     *
      * @returns The percentage progress of the timer.
      */
     getProgress(): number {
@@ -177,8 +191,10 @@ export class Timer {
 
     /**
      * Resets the timer back to its original state.
+     *
+     * @returns void
      */
-    reset() {
+    reset(): void {
         this.remainingTime = this.totalTime;
         this.lastTimestamp = null;
         this.isRunning = false;
@@ -187,6 +203,7 @@ export class Timer {
 
     /**
      * Checks if the timer is currently running.
+     *
      * @returns A boolean indicating whether the timer is active.
      */
     getIsRunning(): boolean {
@@ -195,6 +212,7 @@ export class Timer {
 
     /**
      * Checks if the timer is currently paused.
+     *
      * @returns A boolean indicating whether the timer is active.
      */
     getIsPaused(): boolean {
