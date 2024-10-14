@@ -48,25 +48,34 @@ All entities derive from a common class OBJECT. This class encapsulates shared t
 
 ```ts
 class OBJECT {
-name: string;
-slug: string;
-description: string;
-isUnlocked: boolean;
-unlockCondition: any;
+  name: string;
+  slug: string;
+  description: string;
+  isUnlocked: boolean;
+  unlockCondition: any;
 
-constructor(name: string, description: string, unlockCondition: any) {
-this.name = name;
-this.slug = name.toLowerCase().replace(/\s+/g, '-');
-this.description = description;
-this.isUnlocked = false;
-this.unlockCondition = unlockCondition;
-this.onCreated();
-}
+  constructor(name: string, description: string, unlockCondition: any) {
+    this.name = name;
+    this.slug = name.toLowerCase().replace(/\s+/g, '-');
+    this.description = description;
+    this.isUnlocked = false;
+    this.unlockCondition = unlockCondition;
+    this.onCreated();
+  }
 
-onCreated() { /* logic when created */ }
-checkUnlockCondition() { /* logic to unlock */ }
-unlock() { this.isUnlocked = true; this.onUnlocked(); }
-onUnlocked() { /* logic when unlocked */ }
+  onCreated() { /* logic when created */
+  }
+
+  checkUnlockCondition() { /* logic to unlock */
+  }
+
+  unlock() {
+    this.isUnlocked = true;
+    this.onUnlocked();
+  }
+
+  onUnlocked() { /* logic when unlocked */
+  }
 }
 ```
 
@@ -81,20 +90,22 @@ Storage: Inherits from Building, manages multiple resources with a capacity.
 
 ```ts
 class Building extends OBJECT {
-cost: Record<string, number>;
-buildTime: number;
-productionRate: number;
-upgrades: Upgrade[];
+  cost: Record<string, number>;
+  buildTime: number;
+  productionRate: number;
+  upgrades: Upgrade[];
 
-constructor(name: string, description: string, cost: Record<string, number>, buildTime: number, productionRate: number, unlockCondition: any) {
-super(name, description, unlockCondition);
-this.cost = cost;
-this.buildTime = buildTime;
-this.productionRate = productionRate;
-this.upgrades = [];
-}
+  constructor(name: string, description: string, cost: Record<string, number>, buildTime: number, productionRate: number, unlockCondition: any) {
+    super(name, description, unlockCondition);
+    this.cost = cost;
+    this.buildTime = buildTime;
+    this.productionRate = productionRate;
+    this.upgrades = [];
+  }
 
-addUpgrade(upgrade: Upgrade) { this.upgrades.push(upgrade); }
+  addUpgrade(upgrade: Upgrade) {
+    this.upgrades.push(upgrade);
+  }
 }
 ```
 
@@ -104,16 +115,18 @@ Resources are another extension of the OBJECT class. They store an amount and ca
 
 ```ts
 class Resource extends OBJECT {
-amount: number;
-rate: number;
+  amount: number;
+  rate: number;
 
-constructor(name: string, description: string, initialAmount: number, rate: number, unlockCondition: any) {
-super(name, description, unlockCondition);
-this.amount = initialAmount;
-this.rate = rate;
-}
+  constructor(name: string, description: string, initialAmount: number, rate: number, unlockCondition: any) {
+    super(name, description, unlockCondition);
+    this.amount = initialAmount;
+    this.rate = rate;
+  }
 
-collect(amount: number) { this.amount += amount; }
+  collect(amount: number) {
+    this.amount += amount;
+  }
 }
 ```
 
@@ -123,16 +136,18 @@ Upgrades modify the behavior of buildings, resources, and storage. They have an 
 
 ```ts
 class Upgrade extends OBJECT {
-effect: any;
-cost: Record<string, number>;
+  effect: any;
+  cost: Record<string, number>;
 
-constructor(name: string, description: string, effect: any, cost: Record<string, number>, unlockCondition: any) {
-super(name, description, unlockCondition);
-this.effect = effect;
-this.cost = cost;
-}
+  constructor(name: string, description: string, effect: any, cost: Record<string, number>, unlockCondition: any) {
+    super(name, description, unlockCondition);
+    this.effect = effect;
+    this.cost = cost;
+  }
 
-apply() { this.effect(); }
+  apply() {
+    this.effect();
+  }
 }
 ```
 
@@ -168,7 +183,7 @@ class Game {
 
 ```ts
 const iron = new Resource("Iron", "A basic metal used for construction", 0, 1, () => true);
-const miner = new Miner("Iron Miner", "Mines iron over time", { wood: 10 }, 10, 1, 5, iron, () => true);
+const miner = new Miner("Iron Miner", "Mines iron over time", {wood: 10}, 10, 1, 5, iron, () => true);
 
 miner.gatherResources();
 ```
@@ -183,7 +198,7 @@ miner.addUpgrade(upgrade);
 ### Storage Management
 
 ```ts
-const storage = new Storage("Iron Storage", "Stores iron", { wood: 20 }, 5, 100, () => true);
+const storage = new Storage("Iron Storage", "Stores iron", {wood: 20}, 5, 100, () => true);
 storage.addResource(iron);
 ```
 
