@@ -1,2 +1,1 @@
-export * from './entities';
-export {Game} from './game';
+export * from './index';
