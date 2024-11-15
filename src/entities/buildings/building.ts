@@ -1,5 +1,5 @@
-import {Entity} from "./entity.ts";
-import {Upgrade} from "./upgrade.ts";
+import {Entity} from "../../core/entity";
+import {Upgrade} from "../../core/upgrade";
 
 /**
  * Base class for all buildings, includes shared functionality for upgrading.

@@ -1,6 +1,6 @@
-import {Entity} from "./entity.ts";
-import {Resource} from "./resource.ts";
-import {Factory} from "./factory.ts";
+import {Entity} from "../../core/entity";
+import {Resource} from "../resources/resource";
+import {Factory} from "../buildings/factory";
 
 /**
  * Represents a worker that gathers resources over time.

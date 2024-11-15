@@ -18,8 +18,24 @@
   "license": "MIT",
   "exports": {
     ".": {
-      "import": "./dist/incrementa.js",
-      "require": "./dist/incrementa.umd.cjs"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs",
+      "types": "./dist/core/index.d.ts"
+    },
+    "./entities": {
+      "import": "./dist/entities/index.js",
+      "require": "./dist/entities/index.cjs",
+      "types": "./dist/entities/index.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "require": "./dist/utils/index.cjs",
+      "types": "./dist/utils/index.d.ts"
     }
   },
   "files": [

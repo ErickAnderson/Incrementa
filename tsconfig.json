@@ -2,6 +2,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,
+    "declarationMap": true,
     "esModuleInterop": true,
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -16,7 +17,6 @@
     "moduleResolution": "node",
     "isolatedModules": true,
     "moduleDetection": "force",
-    "allowImportingTsExtensions": true,
     "noEmit": false,
     "emitDeclarationOnly": true,
     /* Linting */
