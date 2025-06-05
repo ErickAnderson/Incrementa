@@ -146,8 +146,10 @@
 * **OOP Design with Composition:** Entities inherit from common base classes, and complex behaviors are achieved by composing smaller, focused components or through interaction with core game systems.
 * **Event-Driven:** Core interactions (resource changes, unlocks, build completions) should emit events, allowing other systems or the UI to react.
 * **Modular Structure:**
+
     * `src/core/` (`game.ts`, `entity.ts`, `timer.ts`, `events.ts`, etc.)
     * `src/types/` (Shared type definitions, e.g., `index.ts`)
+
 
 **Example File Structure:**
 
@@ -161,6 +163,7 @@ graph TD
   src --> types
 
   core --> game.ts
+
   core --> entity.ts
   core --> timer.ts
   core --> events.ts
@@ -179,6 +182,7 @@ graph TD
   workers --> worker.ts
 
   types --> index.ts
+
 ```
 
 ```text
@@ -203,6 +207,7 @@ src/
     index.ts
   types/
     index.ts
+
 ```
 
 **Importing (User Perspective):**
@@ -211,7 +216,9 @@ src/
 import { Game, Resource, Miner, Factory, Storage, Upgrade } from "incrementa";
 
 // or for specific items
+
 import { Miner } from "incrementa/entities/buildings/miner";
+
 ```
 
 ---
@@ -336,6 +343,7 @@ game.start();
 * **Custom Entities & Logic:** Developers can subclass `BaseEntity`, `Building`, `ProducerBuilding`, `Resource`, etc., to create highly custom game elements and override lifecycle hooks (`onInitialize`, `onUpdate`, `onUnlock`, `onBuildComplete`, etc.) or production logic.
 * **Custom Conditions:** Unlock conditions and other conditional logic accept arbitrary functions, providing full control to the developer.
 * **UI Bindings via Event System:** All `Entity` instances (and their derivatives) are intended to support a simple event emitter (`on`, `emit`). (Note: As of now, there is no dedicated `event-emitter.ts` file; event logic may be implemented within entities or in `events.ts`.) Developers can subscribe to events like `amountChanged` (for Resources), `buildComplete` (for Buildings), `unlocked`, `levelChanged`, etc., to update any frontend framework.
+
 * **Lifecycle Hooks & Event-Driven Actions:**
     * `onInitialize()`, `onUnlock()`, `onUpdate(deltaTime)`
     * Building specific: `onBuildStart()`, `onBuildComplete()`, `onLevelUp()`
