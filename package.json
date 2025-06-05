@@ -18,8 +18,8 @@
   "license": "MIT",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
+      "import": "./dist/incrementa.js",
+      "require": "./dist/incrementa.umd.cjs",
       "types": "./dist/index.d.ts"
     },
     "./core": {

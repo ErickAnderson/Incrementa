@@ -1,8 +1,18 @@
-// Public API exports
+// Core exports
 export * from './core';
+
+// Entities exports
 export * from './entities';
-// export * from './utils';
+
+// Utils exports
+export * from './utils';
+
+
+// Type exports
 export type {
   SaveData,
-  StorageProvider
+  StorageProvider,
+  ResourceData,
+  BuildingData,
+  UpgradeData
 } from './types';
