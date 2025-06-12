@@ -4,6 +4,9 @@ export * from './entity';
 // Production system types
 export * from './production';
 
+// Cost system types
+export * from './cost-definition';
+
 export interface SaveData {
   lastPlayTime: number;
   resources: ResourceData[];

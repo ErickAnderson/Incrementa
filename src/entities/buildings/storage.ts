@@ -9,8 +9,7 @@ export class Storage extends Building {
     /** Map of resource IDs to their capacity limits */
     private resourceCapacities: Map<string, number>;
     
-    /** Reference to the game instance for accessing global resources */
-    private game?: any; // Will be set during integration with Game class
+    // Game reference inherited from Building class
 
     /**
      * Creates a new Storage building

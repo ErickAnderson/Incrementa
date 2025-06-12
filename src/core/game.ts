@@ -5,7 +5,9 @@ import { BaseEntity } from "./base-entity";
 import { Timer } from "./timer";
 import { UnlockManager } from "./unlock-manager";
 import { EventManager, EventStats } from "./event-manager";
+import { CostSystem } from "./cost-system";
 import { logger } from "../utils/logger";
+import type { CostDefinition } from "../types/cost-definition";
 /**
  * Game class that manages the entire game state and core loop functionality.
  */
@@ -46,6 +48,9 @@ export class Game {
     /** Global event coordination manager */
     private eventManager: EventManager;
 
+    /** Cost validation and resource spending system */
+    public costSystem: CostSystem;
+
     private saveManager: SaveManager;
 
     /**
@@ -66,6 +71,7 @@ export class Game {
         // Initialize managers
         this.unlockManager = new UnlockManager();
         this.eventManager = new EventManager();
+        this.costSystem = new CostSystem(this);
         
         // Initialize main game timer
         this.gameTimer = new Timer({
@@ -264,7 +270,8 @@ export class Game {
         id?: string;
         name: string;
         description?: string;
-        cost?: Record<string, number>;
+        costs?: CostDefinition[];
+        cost?: Record<string, number>; // Legacy support
         buildTime?: number;
         productionRate?: number;
         level?: number;
@@ -272,6 +279,7 @@ export class Game {
         tags?: string[];
     }): Building {
         const building = new Building(config);
+        building.setGame(this);
         this.addEntity(building);
         return building;
     }
@@ -285,13 +293,15 @@ export class Game {
         id?: string;
         name: string;
         description?: string;
-        cost?: Record<string, number>;
+        costs?: CostDefinition[];
+        cost?: Record<string, number>; // Legacy support
         buildTime?: number;
         capacities?: Record<string, number>;
         unlockCondition?: () => boolean;
         tags?: string[];
     }): Storage {
         const storage = new Storage(config);
+        storage.setGame(this);
         
         // Log storage creation with capacity info
         const capacityInfo = config.capacities 
@@ -313,7 +323,8 @@ export class Game {
         name: string;
         description?: string;
         effect?: any;
-        cost?: Record<string, number>;
+        costs?: CostDefinition[];
+        cost?: Record<string, number>; // Legacy support
         unlockCondition?: () => boolean;
         tags?: string[];
     }): Upgrade {

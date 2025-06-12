@@ -22,7 +22,7 @@ export class ProducerBuilding extends Building {
   protected productionState: ProductionState;
   protected currentCycle: ProductionCycle | null = null;
   protected stats: ProductionStats;
-  protected game?: any; // Game reference for capacity checking
+  // Game reference inherited from Building class
 
   /**
    * Constructor for ProducerBuilding

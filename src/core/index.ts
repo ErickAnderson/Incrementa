@@ -6,6 +6,7 @@ export { SaveManager } from './save-manager';
 export { Upgrade } from './upgrade';
 export { UnlockManager } from './unlock-manager';
 export { EventManager } from './event-manager';
+export { CostSystem, createCost, createCosts, ScalingFunctions } from './cost-system';
 export { 
     getConfig,
     updateConfig,

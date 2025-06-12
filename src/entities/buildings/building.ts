@@ -1,26 +1,30 @@
 import { BaseEntity } from "../../core/base-entity";
 import { Upgrade } from "../../core/upgrade";
 import { logger } from "../../utils/logger";
+import type { CostDefinition, CostCalculationOptions, CostValidationResult, CostProvider } from "../../types/cost-definition";
+import type { Game } from "../../core/game";
 
 /**
  * Base class for all buildings, includes shared functionality for upgrading.
  * Implements PRD Building specification with construction lifecycle and level system.
  *
- * @property {Record<string, number>} cost - Cost to build the building.
+ * @property {CostDefinition[]} costs - Structured cost definitions for building construction.
  * @property {number} buildTime - Time required to build the building.
  * @property {number} productionRate - Rate at which the building produces or mines resources.
  * @property {number} level - Current level of the building.
  * @property {boolean} isBuilding - Whether construction is in progress.
  * @property {Upgrade[]} upgradesApplied - Array of upgrades applied to this building.
  * @extends {BaseEntity}
+ * @implements {CostProvider}
  */
-export class Building extends BaseEntity {
-    cost: Record<string, number>;
+export class Building extends BaseEntity implements CostProvider {
+    costs: CostDefinition[];
     buildTime: number;
     productionRate: number;
     level: number;
     isBuilding: boolean;
     upgradesApplied: Upgrade[];
+    protected game?: Game;
     private constructionTimerId: number | null;
 
     /**
@@ -29,7 +33,8 @@ export class Building extends BaseEntity {
      * @param config - Building configuration object
      * @param config.name - The display name of the building (e.g., "Gold Mine", "Steel Factory")
      * @param config.description - Optional description of what this building does
-     * @param config.cost - Resource costs to construct this building (e.g., {wood: 20, stone: 10})
+     * @param config.costs - Structured cost definitions for building construction
+     * @param config.cost - Legacy cost format (converted to CostDefinition[])
      * @param config.buildTime - Time in seconds required to complete construction (defaults to 0)
      * @param config.productionRate - Base rate of resource production per second (defaults to 0)
      * @param config.level - Starting level of the building (defaults to 1)
@@ -40,7 +45,8 @@ export class Building extends BaseEntity {
     constructor(config: {
         name: string;
         description?: string;
-        cost?: Record<string, number>;
+        costs?: CostDefinition[];
+        cost?: Record<string, number>; // Legacy support
         buildTime?: number;
         productionRate?: number;
         level?: number;
@@ -55,7 +61,21 @@ export class Building extends BaseEntity {
             unlockCondition: config.unlockCondition,
             tags: config.tags
         });
-        this.cost = config.cost || {};
+        
+        // Handle both new costs and legacy cost formats
+        if (config.costs) {
+            this.costs = config.costs;
+        } else if (config.cost) {
+            // Convert legacy cost format to CostDefinition[]
+            this.costs = Object.entries(config.cost).map(([resourceId, amount]) => ({
+                resourceId,
+                amount,
+                scalingFactor: 1.2 // Default scaling factor
+            }));
+        } else {
+            this.costs = [];
+        }
+        
         this.buildTime = config.buildTime || 0;
         this.productionRate = config.productionRate || 0;
         this.level = config.level || 1;
@@ -97,12 +117,33 @@ export class Building extends BaseEntity {
     }
 
     /**
-     * Starts the construction process
+     * Starts the construction process with cost validation and spending
+     * @param spendResources - Whether to spend resources immediately (default: true)
      * @returns Whether construction was started successfully
      */
-    startConstruction(): boolean {
+    startConstruction(spendResources: boolean = true): boolean {
         if (this.isBuilding) {
             return false;
+        }
+        
+        // Validate and spend costs if required
+        if (spendResources) {
+            if (!this.canAfford()) {
+                this.emit('constructionFailed', { 
+                    building: this, 
+                    reason: 'insufficient_resources',
+                    validation: this.validateCost()
+                });
+                return false;
+            }
+            
+            if (!this.spendCost()) {
+                this.emit('constructionFailed', { 
+                    building: this, 
+                    reason: 'spending_failed'
+                });
+                return false;
+            }
         }
         
         this.isBuilding = true;
@@ -167,12 +208,124 @@ export class Building extends BaseEntity {
     }
 
 
+    // CostProvider interface implementation
+    
     /**
-     * Gets the total cost for the current level
+     * Gets the cost definitions for this building
+     */
+    getCosts(): CostDefinition[] {
+        return this.costs;
+    }
+
+    /**
+     * Sets the cost definitions for this building
+     */
+    setCosts(costs: CostDefinition[]): void {
+        this.costs = costs;
+        this.emit('costsChanged', { building: this, costs });
+    }
+
+    /**
+     * Calculates the total cost based on level and options
+     */
+    calculateCost(options: CostCalculationOptions = {}): Record<string, number> {
+        if (!this.game?.costSystem) {
+            // Fallback calculation if no cost system available
+            const calculatedCosts: Record<string, number> = {};
+            const level = options.level || this.level;
+            const multiplier = options.multiplier || 1;
+            
+            for (const cost of this.costs) {
+                let amount = cost.amount;
+                if (level > 1 && cost.scalingFactor) {
+                    amount = cost.amount * Math.pow(cost.scalingFactor, level - 1);
+                }
+                amount *= multiplier;
+                calculatedCosts[cost.resourceId] = (calculatedCosts[cost.resourceId] || 0) + Math.floor(amount);
+            }
+            
+            return calculatedCosts;
+        }
+        
+        return this.game.costSystem.calculateCost(this.costs, {
+            level: this.level,
+            ...options
+        });
+    }
+
+    /**
+     * Checks if the building's costs can be afforded
+     */
+    canAfford(options: CostCalculationOptions = {}): boolean {
+        if (!this.game?.costSystem) {
+            // Fallback validation if no cost system available
+            const calculatedCosts = this.calculateCost(options);
+            for (const [resourceId, requiredAmount] of Object.entries(calculatedCosts)) {
+                const resource = this.game?.getResourceById(resourceId);
+                if (!resource || resource.amount < requiredAmount) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        const validation = this.game.costSystem.validateCost(this.costs, {
+            level: this.level,
+            ...options
+        });
+        
+        return validation.canAfford;
+    }
+
+    /**
+     * Gets detailed cost validation information
+     */
+    validateCost(options: CostCalculationOptions = {}): CostValidationResult | null {
+        if (!this.game?.costSystem) {
+            return null;
+        }
+        
+        return this.game.costSystem.validateCost(this.costs, {
+            level: this.level,
+            ...options
+        });
+    }
+
+    /**
+     * Attempts to spend resources for construction or upgrade
+     */
+    spendCost(options: CostCalculationOptions = {}): boolean {
+        if (!this.game?.costSystem) {
+            return false;
+        }
+        
+        const result = this.game.costSystem.spendResources(this.costs, {
+            level: this.level,
+            ...options
+        });
+        
+        if (result.success) {
+            this.emit('costSpent', { building: this, spent: result.spent });
+        } else {
+            this.emit('costSpendFailed', { building: this, error: result.error });
+        }
+        
+        return result.success;
+    }
+
+    /**
+     * Sets the game reference for cost system integration
+     */
+    setGame(game: Game): void {
+        this.game = game;
+    }
+
+    /**
+     * Gets the total cost for the current level (legacy method)
      * Override in subclasses for level-based cost scaling
      */
     getCurrentCost(): Record<string, number> {
-        return this.cost;
+        return this.calculateCost();
     }
 
     /**
