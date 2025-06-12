@@ -128,10 +128,16 @@ export class Game {
         // Add to specific collections for backward compatibility
         if (entity instanceof Resource) {
             this.resources.push(entity);
+            // Set game reference for capacity checking
+            entity.setGameReference(this);
+            logger.debug(`Game: Resource '${entity.name}' registered for capacity management`);
         } else if (entity instanceof Building) {
             this.buildings.push(entity);
             if (entity instanceof Storage) {
                 this.storages.push(entity);
+                // Set game reference for capacity management
+                entity.setGameReference(this);
+                logger.info(`Game: Storage '${entity.name}' added - now managing ${this.storages.length} storage buildings`);
             }
         } else if (entity instanceof Upgrade) {
             this.upgrades.push(entity);
@@ -165,12 +171,18 @@ export class Game {
         if (entity instanceof Resource) {
             const index = this.resources.indexOf(entity);
             if (index > -1) this.resources.splice(index, 1);
+            // Clear game reference
+            entity.setGameReference(undefined);
+            logger.debug(`Game: Resource '${entity.name}' unregistered from capacity management`);
         } else if (entity instanceof Building) {
             const index = this.buildings.indexOf(entity);
             if (index > -1) this.buildings.splice(index, 1);
             if (entity instanceof Storage) {
                 const storageIndex = this.storages.indexOf(entity);
                 if (storageIndex > -1) this.storages.splice(storageIndex, 1);
+                // Clear game reference
+                entity.setGameReference(undefined);
+                logger.info(`Game: Storage '${entity.name}' removed - ${this.storages.length} storage buildings remaining`);
             }
         } else if (entity instanceof Upgrade) {
             const index = this.upgrades.indexOf(entity);
@@ -252,6 +264,33 @@ export class Game {
         const building = new Building(config);
         this.addEntity(building);
         return building;
+    }
+
+    /**
+     * Factory method to create and register a new storage building
+     * @param config - Storage configuration
+     * @returns The created storage building
+     */
+    createStorage(config: {
+        id?: string;
+        name: string;
+        description?: string;
+        cost?: Record<string, number>;
+        buildTime?: number;
+        capacities?: Record<string, number>;
+        unlockCondition?: () => boolean;
+        tags?: string[];
+    }): Storage {
+        const storage = new Storage(config);
+        
+        // Log storage creation with capacity info
+        const capacityInfo = config.capacities 
+            ? Object.entries(config.capacities).map(([id, cap]) => `${id}:${cap}`).join(', ')
+            : 'no capacities defined';
+        logger.info(`Game: Creating storage '${config.name}' with capacities: ${capacityInfo}`);
+        
+        this.addEntity(storage);
+        return storage;
     }
 
     /**
@@ -446,6 +485,74 @@ export class Game {
      */
     emit(eventName: string, data?: any): void {
         this.eventManager.emit(eventName, data);
+    }
+
+    /**
+     * Gets total capacity for a resource across all storage buildings
+     * @param resourceId - The ID of the resource
+     * @returns Total capacity limit for the resource
+     */
+    getTotalCapacityFor(resourceId: string): number {
+        let totalCapacity = 0;
+        let storageCount = 0;
+        
+        for (const storage of this.storages) {
+            if (storage.isUnlocked) {
+                const capacity = storage.getCapacityFor(resourceId);
+                if (capacity !== undefined) {
+                    totalCapacity += capacity;
+                    storageCount++;
+                }
+            }
+        }
+        
+        if (storageCount > 0) {
+            logger.debug(`Game: Total capacity for ${resourceId}: ${totalCapacity} (from ${storageCount} storage buildings)`);
+        }
+        
+        return totalCapacity;
+    }
+
+    /**
+     * Checks if there is sufficient capacity across all storage buildings for a resource amount
+     * @param resourceId - The ID of the resource
+     * @param amount - The amount to check
+     * @returns Whether there is sufficient capacity
+     */
+    hasGlobalCapacity(resourceId: string, amount: number): boolean {
+        const totalCapacity = this.getTotalCapacityFor(resourceId);
+        if (totalCapacity === 0) {
+            // No storage buildings define capacity for this resource - unlimited
+            logger.debug(`Game: No capacity limits for ${resourceId} - allowing unlimited storage`);
+            return true;
+        }
+        
+        const currentAmount = this.getResourceById(resourceId)?.amount || 0;
+        const hasCapacity = currentAmount + amount <= totalCapacity;
+        
+        if (!hasCapacity) {
+            logger.warn(`Game: Global capacity exceeded for ${resourceId} - attempted +${amount}, current: ${currentAmount}, limit: ${totalCapacity}`);
+        }
+        
+        return hasCapacity;
+    }
+
+    /**
+     * Gets remaining capacity for a resource across all storage buildings
+     * @param resourceId - The ID of the resource
+     * @returns Remaining capacity for the resource
+     */
+    getRemainingCapacityFor(resourceId: string): number {
+        const totalCapacity = this.getTotalCapacityFor(resourceId);
+        const currentAmount = this.getResourceById(resourceId)?.amount || 0;
+        const remaining = Math.max(0, totalCapacity - currentAmount);
+        
+        if (totalCapacity > 0) {
+            const utilization = ((currentAmount / totalCapacity) * 100).toFixed(1);
+            logger.debug(`Game: Remaining capacity for ${resourceId}: ${remaining}/${totalCapacity} (${utilization}% used)`);
+        }
+        
+        return remaining;
     }
 
     /**

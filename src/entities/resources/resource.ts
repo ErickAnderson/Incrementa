@@ -14,6 +14,12 @@ export class Resource extends BaseEntity {
     
     /** Optional passive generation rate (e.g., mana regen) */
     basePassiveRate: number;
+    
+    /** Reference to the game instance for capacity checking */
+    private game?: any;
+    
+    /** Timestamp for throttling passive generation logs */
+    private _lastPassiveLog?: number;
 
     /**
      * Creates a new Resource
@@ -54,7 +60,8 @@ export class Resource extends BaseEntity {
      * Lifecycle hook - called when resource is initialized
      */
     onInitialize(): void {
-        logger.info(`Resource ${this.name} initialized with ${this.amount} units`);
+        const passiveInfo = this.basePassiveRate > 0 ? ` (passive rate: ${this.basePassiveRate}/sec)` : '';
+        logger.info(`Resource ${this.name}: Initialized with ${this.amount} units${passiveInfo}`);
     }
 
     /**
@@ -63,23 +70,78 @@ export class Resource extends BaseEntity {
     onUpdate(deltaTime: number): void {
         if (this.basePassiveRate > 0) {
             const passiveAmount = (this.basePassiveRate * deltaTime) / 1000;
-            this.increment(passiveAmount);
+            
+            // Log passive generation periodically (every ~5 seconds)
+            const logInterval = 5000; // 5 seconds
+            if (!this._lastPassiveLog || Date.now() - this._lastPassiveLog >= logInterval) {
+                logger.debug(`Resource ${this.name}: Passive generation +${passiveAmount.toFixed(3)}/tick (rate: ${this.basePassiveRate}/sec)`);
+                this._lastPassiveLog = Date.now();
+            }
+            
+            const success = this.increment(passiveAmount);
+            
+            // Log if passive generation is blocked by capacity
+            if (!success && this.game) {
+                const capacity = this.game.getTotalCapacityFor(this.id);
+                if (capacity > 0) {
+                    logger.info(`Resource ${this.name}: Passive generation halted - at capacity (${this.amount}/${capacity})`);
+                }
+            }
         }
     }
 
     /**
      * Increases the resource amount and emits change event
      * @param amount - The amount to add to this resource
+     * @param checkCapacity - Whether to check capacity limits (defaults to true)
+     * @returns Whether the increment was successful
      */
-    increment(amount: number): void {
+    increment(amount: number, checkCapacity: boolean = true): boolean {
+        if (amount < 0) {
+            throw new Error('Increment amount must be non-negative');
+        }
+        
+        // Check capacity if requested and game reference is available
+        if (checkCapacity && this.game) {
+            const totalCapacity = this.game.getTotalCapacityFor(this.id);
+            
+            if (!this.game.hasGlobalCapacity(this.id, amount)) {
+                const remainingCapacity = this.game.getRemainingCapacityFor(this.id);
+                logger.warn(`Resource ${this.name}: Increment blocked by capacity - attempted +${amount}, current: ${this.amount}, capacity: ${totalCapacity}, remaining: ${remainingCapacity}`);
+                
+                this.emit('capacityExceeded', {
+                    resourceId: this.id,
+                    attemptedAmount: amount,
+                    currentAmount: this.amount,
+                    totalCapacity,
+                    remainingCapacity
+                });
+                return false;
+            } else if (totalCapacity > 0) {
+                // Log successful increment with capacity info
+                const newAmount = this.amount + amount;
+                const utilization = ((newAmount / totalCapacity) * 100).toFixed(1);
+                logger.debug(`Resource ${this.name}: +${amount} (${this.amount} → ${newAmount}, ${utilization}% capacity used)`);
+            }
+        } else if (!checkCapacity) {
+            logger.debug(`Resource ${this.name}: +${amount} (capacity check bypassed)`);
+        }
+        
         const oldAmount = this.amount;
         this.amount += amount;
+        
+        // Log significant increments
+        if (amount >= 100 || this.amount >= 1000) {
+            logger.info(`Resource ${this.name}: Significant increment +${amount} (total: ${this.amount})`);
+        }
+        
         this.emit('amountChanged', {
             resource: this,
             oldAmount,
             newAmount: this.amount,
             change: amount
         });
+        return true;
     }
 
     /**
@@ -88,9 +150,22 @@ export class Resource extends BaseEntity {
      * @returns Whether the operation was successful
      */
     decrement(amount: number): boolean {
+        if (amount < 0) {
+            logger.warn(`Resource ${this.name}: Attempted negative decrement (${amount})`);
+            return false;
+        }
+        
         if (this.amount >= amount) {
             const oldAmount = this.amount;
             this.amount -= amount;
+            
+            logger.debug(`Resource ${this.name}: -${amount} (${oldAmount} → ${this.amount})`);
+            
+            // Log significant decrements or when resources get low
+            if (amount >= 100 || (oldAmount >= 100 && this.amount < 10)) {
+                logger.info(`Resource ${this.name}: Significant decrement -${amount} (remaining: ${this.amount})`);
+            }
+            
             this.emit('amountChanged', {
                 resource: this,
                 oldAmount,
@@ -98,8 +173,10 @@ export class Resource extends BaseEntity {
                 change: -amount
             });
             return true;
+        } else {
+            logger.warn(`Resource ${this.name}: Insufficient amount for decrement - attempted -${amount}, available: ${this.amount}`);
+            return false;
         }
-        return false;
     }
 
     /**
@@ -108,12 +185,30 @@ export class Resource extends BaseEntity {
      */
     setAmount(amount: number): void {
         const oldAmount = this.amount;
-        this.amount = Math.max(0, amount);
+        const clampedAmount = Math.max(0, amount);
+        
+        if (amount !== clampedAmount) {
+            logger.warn(`Resource ${this.name}: Negative amount clamped to 0 (attempted: ${amount})`);
+        }
+        
+        this.amount = clampedAmount;
+        const change = this.amount - oldAmount;
+        
+        if (Math.abs(change) > 0) {
+            const changeSign = change > 0 ? '+' : '';
+            logger.debug(`Resource ${this.name}: Direct set ${changeSign}${change} (${oldAmount} → ${this.amount})`);
+            
+            // Log significant changes
+            if (Math.abs(change) >= 100) {
+                logger.info(`Resource ${this.name}: Large amount change ${changeSign}${change} (total: ${this.amount})`);
+            }
+        }
+        
         this.emit('amountChanged', {
             resource: this,
             oldAmount,
             newAmount: this.amount,
-            change: this.amount - oldAmount
+            change
         });
     }
 
@@ -124,5 +219,40 @@ export class Resource extends BaseEntity {
      */
     setRate(rate: number) {
         this.rate = rate;
+    }
+    
+    /**
+     * Sets the game instance reference for capacity checking
+     * @param game - The game instance
+     * @internal
+     */
+    setGameReference(game: any): void {
+        this.game = game;
+        if (game) {
+            logger.debug(`Resource ${this.name}: Game reference set - capacity checking enabled`);
+        } else {
+            logger.debug(`Resource ${this.name}: Game reference cleared - capacity checking disabled`);
+        }
+    }
+    
+    /**
+     * Checks if adding a specific amount would exceed capacity
+     * @param amount - The amount to check
+     * @returns Whether the amount can be added without exceeding capacity
+     */
+    canIncrement(amount: number): boolean {
+        if (!this.game) {
+            logger.debug(`Resource ${this.name}: Capacity check - no game reference, allowing increment`);
+            return true; // No capacity checking without game reference
+        }
+        
+        const canAdd = this.game.hasGlobalCapacity(this.id, amount);
+        const capacity = this.game.getTotalCapacityFor(this.id);
+        
+        if (capacity > 0) {
+            logger.debug(`Resource ${this.name}: Capacity check for +${amount} - ${canAdd ? 'ALLOWED' : 'BLOCKED'} (${this.amount + (canAdd ? amount : 0)}/${capacity})`);
+        }
+        
+        return canAdd;
     }
 }
