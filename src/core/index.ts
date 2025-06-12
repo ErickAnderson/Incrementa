@@ -2,8 +2,10 @@ export { Game } from './game';
 export { BaseEntity } from './base-entity';
 export { Events } from './events';
 export { Timer } from './timer';
-export { SaveManager } from './saveManager';
+export { SaveManager } from './save-manager';
 export { Upgrade } from './upgrade';
+export { UnlockManager } from './unlock-manager';
+export { EventManager } from './event-manager';
 export { 
     getConfig,
     updateConfig,
@@ -14,5 +16,6 @@ export {
     initializeFramework
 } from './config';
 
-export type { SaveData, StorageProvider } from './saveManager';
-export type { FrameworkConfig } from './config'; 
+export type { SaveData, StorageProvider } from './save-manager';
+export type { FrameworkConfig } from './config';
+export type { EventStats } from './event-manager'; 

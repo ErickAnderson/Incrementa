@@ -1,7 +1,10 @@
 import { Building, Resource, Storage } from "../entities";
 import { Upgrade } from "./upgrade";
-import { SaveManager } from "./saveManager";
+import { SaveManager } from "./save-manager";
 import { BaseEntity } from "./base-entity";
+import { Timer } from "./timer";
+import { UnlockManager } from "./unlock-manager";
+import { EventManager, EventStats } from "./event-manager";
 import { logger } from "../utils/logger";
 /**
  * Game class that manages the entire game state and core loop functionality.
@@ -28,8 +31,20 @@ export class Game {
     /** Flag indicating if the game loop is running */
     private isRunning: boolean;
 
-    /** Custom timer ID for environment-agnostic game loop */
-    private gameLoopTimerId: number | null;
+    /** Main game timer for the game loop */
+    private gameTimer: Timer;
+
+    /** Collection of additional timers for specific game mechanics */
+    private timers: Map<string, Timer>;
+
+    /** Game speed multiplier */
+    private gameSpeed: number;
+
+    /** Centralized unlock condition manager */
+    private unlockManager: UnlockManager;
+
+    /** Global event coordination manager */
+    private eventManager: EventManager;
 
     private saveManager: SaveManager;
 
@@ -45,7 +60,20 @@ export class Game {
         this.entities = new Map();
         this.lastUpdate = Date.now();
         this.isRunning = false;
-        this.gameLoopTimerId = null;
+        this.timers = new Map();
+        this.gameSpeed = 1.0;
+        
+        // Initialize managers
+        this.unlockManager = new UnlockManager();
+        this.eventManager = new EventManager();
+        
+        // Initialize main game timer
+        this.gameTimer = new Timer({
+            totalTime: Number.MAX_SAFE_INTEGER, // Effectively infinite for main loop
+            tickRate: 16, // ~60 FPS
+            onUpdateCallbacks: [() => this.gameLoop()],
+            conditionCallback: () => this.isRunning
+        });
     }
 
     /**
@@ -87,6 +115,16 @@ export class Game {
     addEntity(entity: BaseEntity): void {
         this.entities.set(entity.id, entity);
         
+        // Register with managers
+        this.eventManager.registerEntity(entity);
+        this.eventManager.routeEntityEvents(entity);
+        
+        // Register unlock condition if entity has one and isn't already unlocked
+        const unlockCondition = entity.getUnlockCondition();
+        if (unlockCondition && !entity.isUnlocked) {
+            this.unlockManager.registerUnlockCondition(entity, unlockCondition);
+        }
+        
         // Add to specific collections for backward compatibility
         if (entity instanceof Resource) {
             this.resources.push(entity);
@@ -98,6 +136,9 @@ export class Game {
         } else if (entity instanceof Upgrade) {
             this.upgrades.push(entity);
         }
+        
+        // Emit entity added event
+        this.eventManager.emit('entityAdded', { entity });
         
         logger.info(`Entity ${entity.name} (${entity.id}) added to game`);
     }
@@ -112,6 +153,13 @@ export class Game {
         if (!entity) {
             return false;
         }
+
+        // Emit entity removal event before cleanup
+        this.eventManager.emit('entityRemoved', { entity });
+
+        // Unregister from managers
+        this.eventManager.unregisterEntity(entityId);
+        this.unlockManager.removeUnlockCondition(entityId);
 
         // Remove from specific collections
         if (entity instanceof Resource) {
@@ -246,6 +294,161 @@ export class Game {
     }
 
     /**
+     * Adds a timer to the game for specific mechanics
+     * @param id - Unique identifier for the timer
+     * @param timer - Timer instance to add
+     */
+    addTimer(id: string, timer: Timer): void {
+        if (this.timers.has(id)) {
+            logger.warn(`Timer with id '${id}' already exists. Replacing.`);
+        }
+        this.timers.set(id, timer);
+        logger.info(`Timer '${id}' added to game`);
+    }
+
+    /**
+     * Removes a timer from the game
+     * @param id - Identifier of the timer to remove
+     * @returns Whether the timer was successfully removed
+     */
+    removeTimer(id: string): boolean {
+        const timer = this.timers.get(id);
+        if (timer) {
+            timer.stop();
+            this.timers.delete(id);
+            logger.info(`Timer '${id}' removed from game`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Gets a timer by its ID
+     * @param id - Identifier of the timer to retrieve
+     * @returns The timer if found, undefined otherwise
+     */
+    getTimer(id: string): Timer | undefined {
+        return this.timers.get(id);
+    }
+
+    /**
+     * Pauses all timers in the game
+     */
+    pauseTimers(): void {
+        this.gameTimer.toggle();
+        for (const timer of this.timers.values()) {
+            if (timer.getIsRunning() && !timer.getIsPaused()) {
+                timer.toggle();
+            }
+        }
+        logger.info('All timers paused');
+    }
+
+    /**
+     * Resumes all paused timers in the game
+     */
+    resumeTimers(): void {
+        if (this.isRunning && this.gameTimer.getIsPaused()) {
+            this.gameTimer.toggle();
+        }
+        for (const timer of this.timers.values()) {
+            if (timer.getIsRunning() && timer.getIsPaused()) {
+                timer.toggle();
+            }
+        }
+        logger.info('All timers resumed');
+    }
+
+    /**
+     * Sets the game speed multiplier
+     * @param speed - Speed multiplier (1.0 = normal speed)
+     */
+    setGameSpeed(speed: number): void {
+        if (speed <= 0) {
+            throw new Error('Game speed must be greater than 0');
+        }
+        this.gameSpeed = speed;
+        logger.info(`Game speed set to ${speed}x`);
+    }
+
+    /**
+     * Gets the current game speed multiplier
+     * @returns Current game speed
+     */
+    getGameSpeed(): number {
+        return this.gameSpeed;
+    }
+
+    /**
+     * Gets the unlock manager instance
+     * @returns UnlockManager instance
+     */
+    getUnlockManager(): UnlockManager {
+        return this.unlockManager;
+    }
+
+    /**
+     * Gets the event manager instance
+     * @returns EventManager instance
+     */
+    getEventManager(): EventManager {
+        return this.eventManager;
+    }
+
+    /**
+     * Gets event statistics from the event manager
+     * @returns Event statistics object
+     */
+    getEventStats(): EventStats {
+        return this.eventManager.getEventStats();
+    }
+
+    /**
+     * Gets unlock statistics from the unlock manager
+     * @returns Unlock statistics object
+     */
+    getUnlockStats() {
+        return this.unlockManager.getStats();
+    }
+
+    /**
+     * Manually unlocks an entity (bypasses condition check)
+     * @param entityId - ID of the entity to unlock
+     * @returns Whether the entity was successfully unlocked
+     */
+    unlockEntity(entityId: string): boolean {
+        return this.unlockManager.unlockEntity(entityId);
+    }
+
+    /**
+     * Adds a global event listener
+     * @param eventName - Name of the event to listen for
+     * @param callback - Function to call when event is emitted
+     */
+    on(eventName: string, callback: Function): void {
+        this.eventManager.on(eventName, callback);
+    }
+
+    /**
+     * Removes a global event listener
+     * @param eventName - Name of the event
+     * @param callback - The callback function to remove
+     * @returns Whether the listener was successfully removed
+     */
+    off(eventName: string, callback: Function): boolean {
+        return this.eventManager.off(eventName, callback);
+    }
+
+    /**
+     * Emits a global event
+     * @param eventName - Name of the event to emit
+     * @param data - Optional data to pass with the event
+     */
+    emit(eventName: string, data?: any): void {
+        this.eventManager.emit(eventName, data);
+    }
+
+    /**
      * Saves the current game state to persistent storage.
      * @returns {void}
      */
@@ -272,7 +475,15 @@ export class Game {
         
         this.isRunning = true;
         this.lastUpdate = Date.now();
-        this.gameLoop();
+        this.gameTimer.start();
+        
+        // Start all registered timers
+        for (const timer of this.timers.values()) {
+            if (!timer.getIsRunning()) {
+                timer.start();
+            }
+        }
+        
         logger.info('Game started');
     }
 
@@ -282,10 +493,10 @@ export class Game {
      */
     pause(): void {
         this.isRunning = false;
-        if (this.gameLoopTimerId !== null) {
-            this.clearTimer(this.gameLoopTimerId);
-            this.gameLoopTimerId = null;
-        }
+        this.pauseTimers();
+        this.unlockManager.pause();
+        this.eventManager.pause();
+        this.emit('gamePaused');
         logger.info('Game paused');
     }
 
@@ -298,7 +509,10 @@ export class Game {
         
         this.isRunning = true;
         this.lastUpdate = Date.now();
-        this.gameLoop();
+        this.resumeTimers();
+        this.unlockManager.resume();
+        this.eventManager.resume();
+        this.emit('gameResumed');
         logger.info('Game resumed');
     }
 
@@ -313,7 +527,7 @@ export class Game {
         if (!this.isRunning) return;
 
         const now = Date.now();
-        const deltaTime = now - this.lastUpdate;
+        const deltaTime = (now - this.lastUpdate) * this.gameSpeed;
         this.lastUpdate = now;
 
         // Update all entities
@@ -322,10 +536,8 @@ export class Game {
         // Legacy resource update for backward compatibility
         this.updateResources(deltaTime);
         
-        // Check unlock conditions for all entities
-        this.checkUnlockConditions();
-
-        this.gameLoopTimerId = this.scheduleTimer(() => this.gameLoop(), 16);
+        // Check unlock conditions using UnlockManager
+        this.unlockManager.checkUnlockConditions();
     }
 
     /**
@@ -355,18 +567,6 @@ export class Game {
         });
     }
 
-    /**
-     * Checks and processes unlock conditions for all game entities.
-     * @private
-     * @returns {void}
-     */
-    private checkUnlockConditions(): void {
-        for (const entity of this.entities.values()) {
-            if (!entity.isUnlocked) {
-                entity.unlock();
-            }
-        }
-    }
 
     /**
      * Calculates offline progress for resources based on time since last play.
@@ -391,28 +591,36 @@ export class Game {
     }
 
     /**
-     * Environment-agnostic timer scheduling
-     * Uses setTimeout in browsers/Node.js environments that support it,
-     * otherwise falls back to immediate execution
-     * @private
+     * Cleanup method to stop all timers and release resources
      */
-    private scheduleTimer(callback: () => void, delay: number): number {
-        if (typeof (globalThis as any).setTimeout === 'function') {
-            return (globalThis as any).setTimeout(callback, delay);
-        } else {
-            callback();
-            return 0;
+    destroy(): void {
+        this.isRunning = false;
+        
+        // Emit destruction event before cleanup
+        this.emit('gameDestroyed');
+        
+        // Stop timers
+        this.gameTimer.stop();
+        for (const timer of this.timers.values()) {
+            timer.stop();
         }
-    }
-
-    /**
-     * Environment-agnostic timer clearing
-     * @private
-     */
-    private clearTimer(timerId: number): void {
-        if (typeof (globalThis as any).clearTimeout === 'function') {
-            (globalThis as any).clearTimeout(timerId);
+        this.timers.clear();
+        
+        // Destroy managers
+        this.unlockManager.destroy();
+        this.eventManager.destroy();
+        
+        // Clear all entities
+        for (const entity of this.entities.values()) {
+            entity.removeAllListeners();
         }
+        this.entities.clear();
+        this.resources = [];
+        this.buildings = [];
+        this.upgrades = [];
+        this.storages = [];
+        
+        logger.info('Game destroyed and resources cleaned up');
     }
 
 }

@@ -146,6 +146,14 @@ export abstract class BaseEntity {
     }
 
     /**
+     * Gets the unlock condition function
+     * @returns The unlock condition function if set, undefined otherwise
+     */
+    getUnlockCondition(): (() => boolean) | undefined {
+        return this.unlockCondition;
+    }
+
+    /**
      * Abstract lifecycle method - must be implemented by subclasses
      * Called once when the entity is created and added to the game
      */
