@@ -1,9 +1,11 @@
 node_modules
 dist
 *.local
+_internal/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+CLAUDE.md

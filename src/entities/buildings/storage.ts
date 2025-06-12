@@ -13,23 +13,37 @@ export class Storage extends Building {
 
     /**
      * Creates a new Storage building
-     * @param name - The name of the storage building
-     * @param description - A description of the storage building
-     * @param cost - The resources required to build this storage
-     * @param buildTime - Time required to construct this storage in milliseconds
-     * @param capacity - Maximum number of resources this storage can hold
-     * @param unlockCondition - Condition that must be met to unlock this storage
+     * @param config - Storage configuration object
+     * @param config.id - Optional unique identifier. If not provided, auto-generated from name
+     * @param config.name - The display name of the storage (e.g., "Warehouse", "Resource Depot")
+     * @param config.description - Optional description of what this storage facility holds
+     * @param config.tags - Optional array of strings for categorizing this storage (e.g., ["storage", "infrastructure"])
+     * @param config.cost - Resource costs to build this storage (e.g., {wood: 30, stone: 20})
+     * @param config.buildTime - Time in seconds required to complete construction (defaults to 0)
+     * @param config.capacity - Maximum number of resource units this storage can hold
+     * @param config.unlockCondition - Function that returns true when this storage should become available
      */
-    constructor(
-        name: string,
-        description: string,
-        cost: Record<string, number>,
-        buildTime: number,
-        capacity: number,
-        unlockCondition: any
-    ) {
-        super(name, description, cost, buildTime, 0, unlockCondition); // Storage doesn't produce resources directly
-        this.capacity = capacity;
+    constructor(config: {
+        id?: string;
+        name: string;
+        description?: string;
+        tags?: string[];
+        cost?: Record<string, number>;
+        buildTime?: number;
+        capacity: number;
+        unlockCondition?: () => boolean;
+    }) {
+        super({
+            id: config.id,
+            name: config.name,
+            description: config.description,
+            tags: config.tags,
+            cost: config.cost,
+            buildTime: config.buildTime,
+            productionRate: 0, // Storage doesn't produce resources directly
+            unlockCondition: config.unlockCondition
+        });
+        this.capacity = config.capacity;
         this.resources = [];
     }
 
@@ -43,7 +57,7 @@ export class Storage extends Building {
             this.resources.push(resource);
             return true;
         }
-        console.log(`Storage is full. Upgrade to increase capacity.`);
+        this.log(`Storage is full. Upgrade to increase capacity.`);
         return false;
     }
 

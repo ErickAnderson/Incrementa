@@ -1,4 +1,4 @@
-import { Entity } from './entity';
+import { BaseEntity } from './base-entity';
 
 /** Configuration interface for Events class */
 interface EventsConfig {
@@ -12,7 +12,7 @@ interface EventsConfig {
  * Class for handling events and callbacks, extending the base Entity class.
  * @extends {Entity}
  */
-export class Events extends Entity {
+export class Events extends BaseEntity {
     /** Array to store callback functions */
     private callbackEvents: Array<() => void>;
 
@@ -25,8 +25,19 @@ export class Events extends Entity {
      * @param {any} config.unlockCondition - Condition that must be met to unlock this event
      */
     constructor(config: EventsConfig) {
-        super(config.name, config.description, config.unlockCondition);
+        super({
+            name: config.name,
+            description: config.description,
+            unlockCondition: config.unlockCondition
+        });
         this.callbackEvents = config.callbackEvents || [];
+    }
+
+    /**
+     * Lifecycle hook - called when events system is initialized
+     */
+    onInitialize(): void {
+        this.log(`Events system ${this.name} initialized with ${this.callbackEvents.length} callbacks`);
     }
 
     /**
@@ -52,7 +63,7 @@ export class Events extends Entity {
         if (typeof callback === 'function') {
             this.callbackEvents.push(callback);
         } else {
-            console.error('Provided callback is not a function');
+            this.log('Provided callback is not a function');
         }
     }
 
@@ -76,8 +87,8 @@ export class Events extends Entity {
      * Lifecycle method called when the event is unlocked
      * @override
      */
-    onUnlocked(): void {
-        super.onUnlocked();
-        console.log(`Event ${this.name} is now ready to trigger callbacks`);
+    onUnlock(): void {
+        super.onUnlock();
+        this.log(`Event ${this.name} is now ready to trigger callbacks`);
     }
 }

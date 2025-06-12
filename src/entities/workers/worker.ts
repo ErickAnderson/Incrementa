@@ -1,11 +1,11 @@
-import {Entity} from "../../core/entity";
+import { BaseEntity } from "../../core/base-entity";
 import {Resource} from "../resources/resource";
 import {Factory} from "../buildings/factory";
 
 /**
  * Represents a worker that gathers resources over time.
  */
-export class Worker extends Entity {
+export class Worker extends BaseEntity {
     // The gathering rate, or amount of resource collected per time interval
     gatheringRate: number;
 
@@ -26,18 +26,45 @@ export class Worker extends Entity {
      * @param interval - The time interval for gathering resources.
      * @param unlockCondition - Condition under which the worker can be unlocked.
      */
-    constructor(
-        name: string,
-        description: string,
-        gatheringRate: number,
-        interval: number,
-        unlockCondition: any
-    ) {
-        super(name, description, unlockCondition);
-        this.gatheringRate = gatheringRate;
-        this.interval = interval;
+    /**
+     * Creates a new Worker instance
+     * @param config - Worker configuration object
+     * @param config.name - The display name of the worker (e.g., "Lumberjack", "Miner")
+     * @param config.description - Optional description of what this worker does
+     * @param config.gatheringRate - Amount of resources gathered per interval (defaults to 1)
+     * @param config.interval - Time in milliseconds between gathering cycles (defaults to 1000)
+     * @param config.unlockCondition - Function that returns true when this worker should become available
+     * @param config.id - Optional unique identifier. If not provided, auto-generated from name
+     * @param config.tags - Optional array of strings for categorizing this worker (e.g., ["automation", "labor"])
+     */
+    constructor(config: {
+        name: string;
+        description?: string;
+        gatheringRate?: number;
+        interval?: number;
+        unlockCondition?: () => boolean;
+        id?: string;
+        tags?: string[];
+    }) {
+        super({
+            id: config.id,
+            name: config.name,
+            description: config.description,
+            unlockCondition: config.unlockCondition,
+            tags: config.tags
+        });
+        this.gatheringRate = config.gatheringRate || 1;
+        this.interval = config.interval || 1000;
         this.status = "idle";
         this.timerId = null;
+    }
+
+
+    /**
+     * Lifecycle hook - called when worker is initialized
+     */
+    onInitialize(): void {
+        this.log(`Worker ${this.name} initialized with gathering rate ${this.gatheringRate}`);
     }
 
     /**
@@ -48,7 +75,7 @@ export class Worker extends Entity {
         if (this.status === "gathering") return; // Already gathering
         this.status = "gathering";
 
-        this.timerId = setInterval(() => {
+        this.timerId = (globalThis as any).setInterval(() => {
             this.gather(resource);
         }, this.interval);
     }
@@ -58,7 +85,7 @@ export class Worker extends Entity {
      */
     stopGathering() {
         if (this.timerId) {
-            clearInterval(this.timerId);
+            (globalThis as any).clearInterval(this.timerId);
             this.timerId = null;
             this.status = "idle";
         }
@@ -70,7 +97,7 @@ export class Worker extends Entity {
      */
     private gather(resource: Resource) {
         if (this.isUnlocked) {
-            resource.collect(this.gatheringRate);
+            resource.increment(this.gatheringRate);
         }
     }
 
@@ -82,7 +109,7 @@ export class Worker extends Entity {
         // Implement logic for gathering resources based on the building's properties
         // For example, if the building has a resource output rate
         if (this.isUnlocked) {
-            console.log(`${this.name} is working on ${building.name}.`);
+            this.log(`${this.name} is working on ${building.name}.`);
             // this.startGathering(building.outputResource); // Assuming building has an outputResource property
             // @TODO Implement logic for gathering resources from the building
         }

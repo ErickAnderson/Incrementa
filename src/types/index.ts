@@ -1,3 +1,6 @@
+// Entity system types
+export * from './entity';
+
 export interface SaveData {
   lastPlayTime: number;
   resources: ResourceData[];

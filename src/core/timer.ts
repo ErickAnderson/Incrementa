@@ -80,7 +80,7 @@ export class Timer {
         this.isPaused = false;
         this.lastTimestamp = Date.now();
 
-        this.globalTimerId = setInterval(() => {
+        this.globalTimerId = this.scheduleRepeatingTimer(() => {
             if (this.conditionCallback!()) {
                 this.update();
             }
@@ -95,7 +95,7 @@ export class Timer {
      */
     stop(callStopCallbacks: boolean = true): void {
         if (this.globalTimerId) {
-            clearInterval(this.globalTimerId);
+            this.clearRepeatingTimer(this.globalTimerId);
             this.globalTimerId = null;
         }
         this.reset();
@@ -302,5 +302,38 @@ export class Timer {
      */
     getIsPaused(): boolean {
         return this.isPaused;
+    }
+
+    /**
+     * Environment-agnostic repeating timer scheduling
+     * Uses setInterval in environments that support it,
+     * otherwise falls back to recursive setTimeout
+     * @private
+     */
+    private scheduleRepeatingTimer(callback: () => void, interval: number): number {
+        if (typeof (globalThis as any).setInterval === 'function') {
+            return (globalThis as any).setInterval(callback, interval);
+        } else {
+            const recursiveTimer = () => {
+                callback();
+                if (this.isRunning && !this.isPaused && typeof (globalThis as any).setTimeout === 'function') {
+                    (globalThis as any).setTimeout(recursiveTimer, interval);
+                }
+            };
+            if (typeof (globalThis as any).setTimeout === 'function') {
+                (globalThis as any).setTimeout(recursiveTimer, interval);
+            }
+            return 1; // Return dummy ID
+        }
+    }
+
+    /**
+     * Environment-agnostic repeating timer clearing
+     * @private
+     */
+    private clearRepeatingTimer(timerId: number): void {
+        if (typeof (globalThis as any).clearInterval === 'function') {
+            (globalThis as any).clearInterval(timerId);
+        }
     }
 }

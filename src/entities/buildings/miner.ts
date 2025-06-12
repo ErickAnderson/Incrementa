@@ -13,28 +13,45 @@ export class Miner extends Building {
 
     /**
      * Creates a new Miner building
-     * @param name - The name of the miner
-     * @param description - A description of the miner
-     * @param cost - The resources required to build this miner
-     * @param buildTime - Time required to construct this miner
-     * @param productionRate - Base production rate of this miner
-     * @param gatherRate - Rate at which this miner gathers resources
-     * @param resource - The resource this miner will gather
-     * @param unlockCondition - Condition that must be met to unlock this miner
+     * @param config - Miner configuration object
+     * @param config.id - Optional unique identifier. If not provided, auto-generated from name
+     * @param config.name - The display name of the miner (e.g., "Gold Mine", "Iron Excavator")
+     * @param config.description - Optional description of what this miner extracts
+     * @param config.cost - Resource costs to build this miner (e.g., {wood: 20, stone: 10})
+     * @param config.buildTime - Time in seconds required to complete construction (defaults to 0)
+     * @param config.productionRate - Base production multiplier (defaults to 0)
+     * @param config.level - Starting level of the miner (defaults to 1)
+     * @param config.gatherRate - Amount of target resource gathered per mining cycle
+     * @param config.resource - The specific resource this miner will extract
+     * @param config.unlockCondition - Function that returns true when this miner should become available
+     * @param config.tags - Optional array of strings for categorizing this miner (e.g., ["mining", "automation"])
      */
-    constructor(
-        name: string,
-        description: string,
-        cost: Record<string, number>,
-        buildTime: number,
-        productionRate: number,
-        gatherRate: number,
-        resource: Resource,
-        unlockCondition: any
-    ) {
-        super(name, description, cost, buildTime, productionRate, unlockCondition);
-        this.resource = resource;
-        this.gatherRate = gatherRate;
+    constructor(config: {
+        id?: string;
+        name: string;
+        description?: string;
+        tags?: string[];
+        cost?: Record<string, number>;
+        buildTime?: number;
+        productionRate?: number;
+        level?: number;
+        gatherRate: number;
+        resource: Resource;
+        unlockCondition?: () => boolean;
+    }) {
+        super({
+            id: config.id,
+            name: config.name,
+            description: config.description,
+            tags: config.tags,
+            cost: config.cost,
+            buildTime: config.buildTime,
+            productionRate: config.productionRate,
+            level: config.level,
+            unlockCondition: config.unlockCondition
+        });
+        this.resource = config.resource;
+        this.gatherRate = config.gatherRate;
     }
 
     /**
@@ -42,10 +59,9 @@ export class Miner extends Building {
      * Adds gathered resources directly to the resource's amount
      */
     gatherResources() {
-        this.resource.amount += this.gatherRate;
-        console.log(
+        this.resource.increment(this.gatherRate);
+        this.log(
             `${this.name} gathered ${this.gatherRate} ${this.resource.name}.`
         );
     }
 }
-

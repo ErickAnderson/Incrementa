@@ -5,6 +5,7 @@
 Incrementa is a JavaScript/TypeScript library designed to simplify the creation and prototyping of incremental or idle games. The library provides an abstract, modular set of entities and utilities
 needed for resource collection, buildings, upgrades, and progression mechanics. Developers can quickly set up a game using a collection of pre-built, reusable components without being tied to specific
 visual styles or opinions.
+Code clarity and developer experience was a day-one requirement for this project. Every class, method, and configuration object features comprehensive documentation, meaningful naming conventions, and inline comments that make the framework self-explanatory. Whether you're exploring the source code or implementing game mechanics, the codebase serves as its own tutorial, enabling developers to understand and extend functionality intuitively without external documentation dependencies.
 
 ## Core Concepts
 

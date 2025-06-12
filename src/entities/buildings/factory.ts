@@ -13,28 +13,45 @@ export class Factory extends Building {
 
     /**
      * Creates a new Factory building
-     * @param name - The name of the factory
-     * @param description - A description of the factory
-     * @param cost - The resources required to build this factory
-     * @param buildTime - Time required to construct this factory
-     * @param productionRate - Rate at which this factory produces resources
-     * @param inputResources - Array of resources consumed during production
-     * @param outputResources - Array of resources produced by this factory
-     * @param unlockCondition - Condition that must be met to unlock this factory
+     * @param config - Factory configuration object
+     * @param config.name - The display name of the factory (e.g., "Steel Mill", "Textile Factory")
+     * @param config.description - Optional description of what this factory produces
+     * @param config.cost - Resource costs to build this factory (e.g., {wood: 50, stone: 30})
+     * @param config.buildTime - Time in seconds required to complete construction (defaults to 0)
+     * @param config.productionRate - Base production speed multiplier (defaults to 0)
+     * @param config.level - Starting level of the factory (defaults to 1)
+     * @param config.inputResources - Array of resources this factory consumes to operate
+     * @param config.outputResources - Array of resources this factory produces
+     * @param config.unlockCondition - Function that returns true when this factory should become available
+     * @param config.id - Optional unique identifier. If not provided, auto-generated from name
+     * @param config.tags - Optional array of strings for categorizing this factory (e.g., ["production", "conversion"])
      */
-    constructor(
-        name: string,
-        description: string,
-        cost: Record<string, number>,
-        buildTime: number,
-        productionRate: number,
-        inputResources: Resource[],
-        outputResources: Resource[],
-        unlockCondition: any
-    ) {
-        super(name, description, cost, buildTime, productionRate, unlockCondition);
-        this.inputResources = inputResources;
-        this.outputResources = outputResources;
+    constructor(config: {
+        name: string;
+        description?: string;
+        cost?: Record<string, number>;
+        buildTime?: number;
+        productionRate?: number;
+        level?: number;
+        inputResources: Resource[];
+        outputResources: Resource[];
+        unlockCondition?: () => boolean;
+        id?: string;
+        tags?: string[];
+    }) {
+        super({
+            name: config.name,
+            description: config.description,
+            cost: config.cost,
+            buildTime: config.buildTime,
+            productionRate: config.productionRate,
+            level: config.level,
+            unlockCondition: config.unlockCondition,
+            id: config.id,
+            tags: config.tags
+        });
+        this.inputResources = config.inputResources;
+        this.outputResources = config.outputResources;
     }
 
     /**
@@ -42,9 +59,17 @@ export class Factory extends Building {
      * Consumes 1 unit of each input resource to produce 1 unit of each output resource
      */
     produceResources() {
-        // Assume we consume 1 unit of each input resource to produce output resources
-        this.inputResources.forEach((resource) => resource.amount--);
-        this.outputResources.forEach((resource) => resource.amount++);
-        console.log(`${this.name} produced resources.`);
+        // Check if we have enough input resources
+        const canProduce = this.inputResources.every(resource => resource.amount >= 1);
+        
+        if (canProduce) {
+            // Consume input resources
+            this.inputResources.forEach((resource) => resource.decrement(1));
+            // Produce output resources
+            this.outputResources.forEach((resource) => resource.increment(1));
+            this.log(`${this.name} produced resources.`);
+        } else {
+            this.log(`${this.name} cannot produce - insufficient input resources.`);
+        }
     }
 }
