@@ -14,11 +14,12 @@ Resources are the backbone of any incremental game. These entities are what play
 
 ### Buildings
 
-Buildings automate or enhance resource collection. Buildings can be constructed, upgraded, and used to gather or convert resources.
+Buildings automate or enhance resource collection. Buildings can be constructed, upgraded, and used to gather or convert resources. All production buildings extend the **ProducerBuilding** base class which provides a complete production lifecycle system.
 
-- Miner: A specialized building that collects resources automatically over time.
-- Factory: A building that takes one or more input resources and produces other resources.
-- Storage: A building that stores multiple resources with upgradeable capacity. It limits how many resources can be gathered or stored by the player at any given time.
+- **Miner**: Extraction-based production building that generates resources automatically without input requirements
+- **Factory**: Transformation-based production building that converts input resources into output resources
+- **Storage**: Capacity management building that defines global resource storage limits
+- **ProducerBuilding**: Base class providing production lifecycle (`startProduction()`, `stopProduction()`, `canProduce()`), resource validation, and efficiency systems
 
 ### Upgrades
 
@@ -47,6 +48,17 @@ Incrementa features a sophisticated, configurable logging system with multiple o
 ## Technical Overview
 
 Incrementa is structured using Object-Oriented Programming (OOP) principles. Entities share common traits, reducing redundant code and providing a highly extendable base for additional features.
+
+### Recent Updates: Production System Architecture
+
+The framework now includes a comprehensive **Production System** with:
+
+- **ProducerBuilding Base Class**: Complete production lifecycle with `startProduction()`, `stopProduction()`, `canProduce()`
+- **Resource Validation**: Automatic input availability and output capacity checking
+- **Game Loop Integration**: Production ticks integrated with delta time calculations
+- **Global Production Management**: Game class methods for production optimization and bottleneck detection
+- **Event System**: Comprehensive production event emission for UI integration
+- **Type-Safe Configuration**: Complete TypeScript types for production inputs, outputs, rates, and efficiency
 
 ### Base Object Structure
 
@@ -191,13 +203,33 @@ class Game {
 
 ## Examples
 
-### Creating a Miner Building
+### Creating a Miner Building (New Production System)
 
 ```ts
-const iron = new Resource("Iron", "A basic metal used for construction", 0, 1, () => true);
-const miner = new Miner("Iron Miner", "Mines iron over time", {wood: 10}, 10, 1, 5, iron, () => true);
+// Create resources
+const game = new Game(saveManager);
+const iron = game.createResource({
+  name: "Iron",
+  description: "A basic metal used for construction"
+});
 
-miner.gatherResources();
+// Create miner with production configuration
+const miner = new Miner({
+  name: "Iron Miner",
+  description: "Extracts iron automatically",
+  cost: { wood: 10 },
+  buildTime: 5,
+  gatherRate: 2.0, // 2 iron per second
+  resourceId: iron.id,
+  autoStart: true // Starts production automatically when built
+});
+
+game.addEntity(miner);
+
+// Production starts automatically when unlocked/built
+// Or manually control production:
+// miner.startProduction();
+// miner.stopProduction();
 ```
 
 ### Adding an Upgrade
@@ -207,11 +239,43 @@ const upgrade = new Upgrade("Double Mining Speed", "Doubles the rate of mining",
 miner.addUpgrade(upgrade);
 ```
 
-### Storage Management
+### Factory Production (New System)
 
 ```ts
-const storage = new Storage("Iron Storage", "Stores iron", {wood: 20}, 5, 100, () => true);
-storage.addResource(iron);
+// Create a factory that converts iron to steel
+const factory = new Factory({
+  name: "Steel Mill",
+  description: "Converts iron to steel",
+  cost: { wood: 50, stone: 25 },
+  buildTime: 10,
+  inputs: [{ resourceId: iron.id, amount: 2 }], // Consumes 2 iron per cycle
+  outputs: [{ resourceId: steel.id, amount: 1 }], // Produces 1 steel per cycle
+  productionRate: 0.5, // 0.5 cycles per second
+  efficiency: 1.0 // 100% efficiency
+});
+
+game.addEntity(factory);
+factory.startProduction(); // Start when resources are available
+```
+
+### Storage Management (New Capacity System)
+
+```ts
+// Storage now manages capacity limits, not local storage
+const storage = game.createStorage({
+  name: "Resource Warehouse",
+  description: "Increases storage capacity for all resources",
+  cost: { wood: 20 },
+  buildTime: 5,
+  capacities: {
+    [iron.id]: 100, // Can store up to 100 iron
+    [steel.id]: 50  // Can store up to 50 steel
+  }
+});
+
+// Check global capacity
+const canStore = game.hasGlobalCapacity(iron.id, 25); // Can we store 25 more iron?
+const remaining = game.getRemainingCapacityFor(iron.id); // How much space left?
 ```
 
 ## Advanced Logging Configuration

@@ -139,6 +139,11 @@ export class Game {
                 entity.setGameReference(this);
                 logger.info(`Game: Storage '${entity.name}' added - now managing ${this.storages.length} storage buildings`);
             }
+            // Set game reference for producer buildings
+            if ('setGameReference' in entity) {
+                (entity as any).setGameReference(this);
+                logger.debug(`Game: Game reference set for building '${entity.name}'`);
+            }
         } else if (entity instanceof Upgrade) {
             this.upgrades.push(entity);
         }
@@ -183,6 +188,11 @@ export class Game {
                 // Clear game reference
                 entity.setGameReference(undefined);
                 logger.info(`Game: Storage '${entity.name}' removed - ${this.storages.length} storage buildings remaining`);
+            }
+            // Clear game reference for producer buildings
+            if ('setGameReference' in entity) {
+                (entity as any).setGameReference(undefined);
+                logger.debug(`Game: Game reference cleared for building '${entity.name}'`);
             }
         } else if (entity instanceof Upgrade) {
             const index = this.upgrades.indexOf(entity);
@@ -553,6 +563,279 @@ export class Game {
         }
         
         return remaining;
+    }
+
+    // Production Management Methods
+
+    /**
+     * Starts production for all producer buildings that can produce
+     * @returns Array of buildings that started production
+     */
+    startAllProduction(): BaseEntity[] {
+        const startedBuildings: BaseEntity[] = [];
+        
+        for (const entity of this.entities.values()) {
+            if (entity.isUnlocked && 'startProduction' in entity && 'canProduce' in entity) {
+                const producer = entity as any;
+                if (producer.canProduce() && !producer.isCurrentlyProducing()) {
+                    if (producer.startProduction()) {
+                        startedBuildings.push(entity);
+                    }
+                }
+            }
+        }
+        
+        logger.info(`Started production for ${startedBuildings.length} buildings`);
+        return startedBuildings;
+    }
+
+    /**
+     * Stops production for all producer buildings
+     * @returns Array of buildings that stopped production
+     */
+    stopAllProduction(): BaseEntity[] {
+        const stoppedBuildings: BaseEntity[] = [];
+        
+        for (const entity of this.entities.values()) {
+            if (entity.isUnlocked && 'stopProduction' in entity && 'isCurrentlyProducing' in entity) {
+                const producer = entity as any;
+                if (producer.isCurrentlyProducing()) {
+                    producer.stopProduction();
+                    stoppedBuildings.push(entity);
+                }
+            }
+        }
+        
+        logger.info(`Stopped production for ${stoppedBuildings.length} buildings`);
+        return stoppedBuildings;
+    }
+
+    /**
+     * Gets all producer buildings in the game
+     * @returns Array of producer building entities
+     */
+    getProducerBuildings(): BaseEntity[] {
+        const producers: BaseEntity[] = [];
+        
+        for (const entity of this.entities.values()) {
+            if ('startProduction' in entity && 'stopProduction' in entity) {
+                producers.push(entity);
+            }
+        }
+        
+        return producers;
+    }
+
+    /**
+     * Gets all currently producing buildings
+     * @returns Array of buildings that are actively producing
+     */
+    getActiveProducers(): BaseEntity[] {
+        const activeProducers: BaseEntity[] = [];
+        
+        for (const entity of this.entities.values()) {
+            if (entity.isUnlocked && 'isCurrentlyProducing' in entity) {
+                const producer = entity as any;
+                if (producer.isCurrentlyProducing()) {
+                    activeProducers.push(entity);
+                }
+            }
+        }
+        
+        return activeProducers;
+    }
+
+    /**
+     * Gets production statistics across all producer buildings
+     * @returns Aggregated production statistics
+     */
+    getGlobalProductionStats(): {
+        totalProducers: number;
+        activeProducers: number;
+        totalCyclesCompleted: number;
+        averageEfficiency: number;
+        resourceProductionRates: Record<string, number>;
+        resourceConsumptionRates: Record<string, number>;
+    } {
+        const producers = this.getProducerBuildings();
+        const activeProducers = this.getActiveProducers();
+        
+        let totalCycles = 0;
+        let totalEfficiency = 0;
+        let efficiencyCount = 0;
+        const productionRates: Record<string, number> = {};
+        const consumptionRates: Record<string, number> = {};
+        
+        for (const entity of producers) {
+            if ('getProductionStats' in entity) {
+                const producer = entity as any;
+                const stats = producer.getProductionStats();
+                
+                totalCycles += stats.totalCycles || 0;
+                
+                if (stats.averageEfficiency !== undefined) {
+                    totalEfficiency += stats.averageEfficiency;
+                    efficiencyCount++;
+                }
+                
+                // Aggregate production rates
+                if (stats.productionRates) {
+                    for (const [resourceId, rate] of Object.entries(stats.productionRates)) {
+                        productionRates[resourceId] = (productionRates[resourceId] || 0) + (rate as number);
+                    }
+                }
+                
+                // Aggregate consumption rates
+                if (stats.consumptionRates) {
+                    for (const [resourceId, rate] of Object.entries(stats.consumptionRates)) {
+                        consumptionRates[resourceId] = (consumptionRates[resourceId] || 0) + (rate as number);
+                    }
+                }
+            }
+        }
+        
+        return {
+            totalProducers: producers.length,
+            activeProducers: activeProducers.length,
+            totalCyclesCompleted: totalCycles,
+            averageEfficiency: efficiencyCount > 0 ? totalEfficiency / efficiencyCount : 0,
+            resourceProductionRates: productionRates,
+            resourceConsumptionRates: consumptionRates
+        };
+    }
+
+    /**
+     * Checks resource availability for a specific production requirement
+     * @param inputs - Array of resource requirements
+     * @returns Whether all input resources are available
+     */
+    checkResourceAvailability(inputs: Array<{resourceId: string, amount: number}>): boolean {
+        return inputs.every(input => {
+            const resource = this.getResourceById(input.resourceId);
+            return resource && resource.amount >= input.amount;
+        });
+    }
+
+    /**
+     * Checks production capacity for a specific output
+     * @param outputs - Array of resource outputs
+     * @returns Whether all outputs can be stored
+     */
+    checkProductionCapacity(outputs: Array<{resourceId: string, amount: number}>): boolean {
+        return outputs.every(output => {
+            return this.hasGlobalCapacity(output.resourceId, output.amount);
+        });
+    }
+
+    /**
+     * Gets production bottlenecks - resources that are limiting production
+     * @returns Object describing current production bottlenecks
+     */
+    getProductionBottlenecks(): {
+        resourceShortages: Array<{resourceId: string, required: number, available: number}>;
+        capacityLimits: Array<{resourceId: string, attempted: number, capacity: number}>;
+        stoppedProducers: Array<{entityId: string, name: string, reason: string}>;
+    } {
+        const resourceShortages: Array<{resourceId: string, required: number, available: number}> = [];
+        const capacityLimits: Array<{resourceId: string, attempted: number, capacity: number}> = [];
+        const stoppedProducers: Array<{entityId: string, name: string, reason: string}> = [];
+        
+        for (const entity of this.getProducerBuildings()) {
+            if (!entity.isUnlocked) continue;
+            
+            const producer = entity as any;
+            
+            // Check if producer should be active but isn't
+            if ('canProduce' in producer && 'isCurrentlyProducing' in producer) {
+                if (!producer.isCurrentlyProducing() && !producer.canProduce()) {
+                    let reason = 'Unknown';
+                    
+                    // Check for input shortages
+                    if ('getProductionInputs' in producer) {
+                        const inputs = producer.getProductionInputs();
+                        for (const input of inputs) {
+                            const resource = this.getResourceById(input.resourceId);
+                            const available = resource?.amount || 0;
+                            if (available < input.amount) {
+                                resourceShortages.push({
+                                    resourceId: input.resourceId,
+                                    required: input.amount,
+                                    available
+                                });
+                                reason = `Insufficient ${input.resourceId}`;
+                            }
+                        }
+                    }
+                    
+                    // Check for capacity limits
+                    if ('getProductionOutputs' in producer) {
+                        const outputs = producer.getProductionOutputs();
+                        for (const output of outputs) {
+                            if (!this.hasGlobalCapacity(output.resourceId, output.amount)) {
+                                const capacity = this.getTotalCapacityFor(output.resourceId);
+                                capacityLimits.push({
+                                    resourceId: output.resourceId,
+                                    attempted: output.amount,
+                                    capacity
+                                });
+                                reason = `Capacity limit for ${output.resourceId}`;
+                            }
+                        }
+                    }
+                    
+                    stoppedProducers.push({
+                        entityId: entity.id,
+                        name: entity.name,
+                        reason
+                    });
+                }
+            }
+        }
+        
+        return {
+            resourceShortages,
+            capacityLimits,
+            stoppedProducers
+        };
+    }
+
+    /**
+     * Optimizes production by starting/stopping producers based on resource availability
+     * @returns Summary of optimization actions taken
+     */
+    optimizeProduction(): {
+        started: number;
+        stopped: number;
+        bottlenecks: string[];
+    } {
+        let started = 0;
+        let stopped = 0;
+        const bottlenecks: string[] = [];
+        
+        for (const entity of this.getProducerBuildings()) {
+            if (!entity.isUnlocked) continue;
+            
+            const producer = entity as any;
+            
+            if ('canProduce' in producer && 'startProduction' in producer && 'stopProduction' in producer) {
+                const canProduce = producer.canProduce();
+                const isProducing = producer.isCurrentlyProducing();
+                
+                if (canProduce && !isProducing) {
+                    if (producer.startProduction()) {
+                        started++;
+                    }
+                } else if (!canProduce && isProducing) {
+                    producer.stopProduction();
+                    stopped++;
+                    bottlenecks.push(`${entity.name}: Cannot produce`);
+                }
+            }
+        }
+        
+        const result = { started, stopped, bottlenecks };
+        logger.info(`Production optimization: Started ${started}, Stopped ${stopped}, Bottlenecks: ${bottlenecks.length}`);
+        return result;
     }
 
     /**
