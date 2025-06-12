@@ -1,4 +1,5 @@
 import { BaseEntity } from "./base-entity";
+import { logger } from "../utils/logger";
 
 /**
  * Upgrade class to apply effects to buildings, storage, or resources.
@@ -47,12 +48,12 @@ export class Upgrade extends BaseEntity {
      * Lifecycle hook - called when upgrade is initialized
      */
     onInitialize(): void {
-        this.log(`Upgrade ${this.name} initialized`);
+        logger.info(`Upgrade ${this.name} initialized`);
     }
 
     // Apply the upgrade effect
     apply() {
-        this.log(`${this.name} upgrade applied.`);
+        logger.info(`${this.name} upgrade applied.`);
         this.effect();
     }
 }

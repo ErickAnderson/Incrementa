@@ -1,5 +1,6 @@
 import {Building} from "./building";
 import {Resource} from "../resources/resource";
+import { logger } from "../../utils/logger";
 
 /**
  * Factory class takes one or more resources as input and produces new resources.
@@ -67,9 +68,9 @@ export class Factory extends Building {
             this.inputResources.forEach((resource) => resource.decrement(1));
             // Produce output resources
             this.outputResources.forEach((resource) => resource.increment(1));
-            this.log(`${this.name} produced resources.`);
+            logger.info(`${this.name} produced resources.`);
         } else {
-            this.log(`${this.name} cannot produce - insufficient input resources.`);
+            logger.info(`${this.name} cannot produce - insufficient input resources.`);
         }
     }
 }

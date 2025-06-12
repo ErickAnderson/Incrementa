@@ -1,6 +1,7 @@
 import { BaseEntity } from "../../core/base-entity";
 import {Resource} from "../resources/resource";
 import {Factory} from "../buildings/factory";
+import { logger } from "../../utils/logger";
 
 /**
  * Represents a worker that gathers resources over time.
@@ -64,7 +65,7 @@ export class Worker extends BaseEntity {
      * Lifecycle hook - called when worker is initialized
      */
     onInitialize(): void {
-        this.log(`Worker ${this.name} initialized with gathering rate ${this.gatheringRate}`);
+        logger.info(`Worker ${this.name} initialized with gathering rate ${this.gatheringRate}`);
     }
 
     /**
@@ -109,7 +110,7 @@ export class Worker extends BaseEntity {
         // Implement logic for gathering resources based on the building's properties
         // For example, if the building has a resource output rate
         if (this.isUnlocked) {
-            this.log(`${this.name} is working on ${building.name}.`);
+            logger.info(`${this.name} is working on ${building.name}.`);
             // this.startGathering(building.outputResource); // Assuming building has an outputResource property
             // @TODO Implement logic for gathering resources from the building
         }

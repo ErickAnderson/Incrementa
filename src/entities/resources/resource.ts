@@ -1,4 +1,5 @@
 import { BaseEntity } from "../../core/base-entity";
+import { logger } from "../../utils/logger";
 
 /**
  * Resource class, representing anything the player can collect or spend.
@@ -53,7 +54,7 @@ export class Resource extends BaseEntity {
      * Lifecycle hook - called when resource is initialized
      */
     onInitialize(): void {
-        this.log(`Resource ${this.name} initialized with ${this.amount} units`);
+        logger.info(`Resource ${this.name} initialized with ${this.amount} units`);
     }
 
     /**

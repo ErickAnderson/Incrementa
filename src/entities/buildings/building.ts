@@ -1,5 +1,6 @@
 import { BaseEntity } from "../../core/base-entity";
 import { Upgrade } from "../../core/upgrade";
+import { logger } from "../../utils/logger";
 
 /**
  * Base class for all buildings, includes shared functionality for upgrading.
@@ -68,14 +69,14 @@ export class Building extends BaseEntity {
      * Lifecycle hook - called when building is initialized
      */
     onInitialize(): void {
-        this.log(`Building ${this.name} initialized at level ${this.level}`);
+        logger.info(`Building ${this.name} initialized at level ${this.level}`);
     }
 
     /**
      * Lifecycle hook called when building starts construction
      */
     onBuildStart(): void {
-        this.log(`Construction of ${this.name} has started`);
+        logger.info(`Construction of ${this.name} has started`);
         this.emit('buildStart', { building: this });
     }
 
@@ -83,7 +84,7 @@ export class Building extends BaseEntity {
      * Lifecycle hook called when building construction is complete
      */
     onBuildComplete(): void {
-        this.log(`Construction of ${this.name} is complete`);
+        logger.info(`Construction of ${this.name} is complete`);
         this.emit('buildComplete', { building: this });
     }
 
@@ -91,7 +92,7 @@ export class Building extends BaseEntity {
      * Lifecycle hook called when building levels up
      */
     onLevelUp(newLevel: number): void {
-        this.log(`${this.name} leveled up to level ${newLevel}`);
+        logger.info(`${this.name} leveled up to level ${newLevel}`);
         this.emit('levelUp', { building: this, oldLevel: this.level, newLevel });
     }
 

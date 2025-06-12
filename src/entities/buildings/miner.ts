@@ -1,5 +1,6 @@
 import {Building} from "./building";
 import {Resource} from "../resources/resource";
+import { logger } from "../../utils/logger";
 
 /**
  * Miner class responsible for gathering resources over time.
@@ -60,7 +61,7 @@ export class Miner extends Building {
      */
     gatherResources() {
         this.resource.increment(this.gatherRate);
-        this.log(
+        logger.info(
             `${this.name} gathered ${this.gatherRate} ${this.resource.name}.`
         );
     }

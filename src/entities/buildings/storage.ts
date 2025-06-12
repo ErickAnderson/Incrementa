@@ -1,5 +1,6 @@
 import {Building} from "./building";
 import {Resource} from "../resources/resource";
+import { logger } from "../../utils/logger";
 
 /**
  * Storage class to store multiple types of resources and increase capacity.
@@ -57,7 +58,7 @@ export class Storage extends Building {
             this.resources.push(resource);
             return true;
         }
-        this.log(`Storage is full. Upgrade to increase capacity.`);
+        logger.warn(`Storage is full. Upgrade to increase capacity.`);
         return false;
     }
 

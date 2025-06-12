@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger";
+
 /**
  * Base abstract class for all game entities, providing shared properties and methods.
  * Implements PRD specification for BaseEntity with event emitters and lifecycle hooks.
@@ -102,7 +104,7 @@ export abstract class BaseEntity {
                 try {
                     callback(data);
                 } catch (error) {
-                    this.log(`Error in event listener for ${eventName}: ${error}`);
+                    logger.error(`Error in event listener for ${eventName}: ${error}`);
                 }
             });
         }
@@ -154,7 +156,7 @@ export abstract class BaseEntity {
      * Can be overridden by subclasses for custom unlock behavior
      */
     onUnlock(): void {
-        this.log(`${this.name} unlocked!`);
+        logger.info(`${this.name} unlocked!`);
     }
 
     /**
@@ -226,14 +228,4 @@ export abstract class BaseEntity {
         };
     }
 
-    /**
-     * Environment-agnostic logging
-     * Uses console.log if available, otherwise silent
-     * @protected
-     */
-    protected log(message: string): void {
-        if (typeof (globalThis as any).console?.log === 'function') {
-            (globalThis as any).console.log(message);
-        }
-    }
 }

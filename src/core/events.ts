@@ -1,4 +1,5 @@
 import { BaseEntity } from './base-entity';
+import { logger } from '../utils/logger';
 
 /** Configuration interface for Events class */
 interface EventsConfig {
@@ -37,7 +38,7 @@ export class Events extends BaseEntity {
      * Lifecycle hook - called when events system is initialized
      */
     onInitialize(): void {
-        this.log(`Events system ${this.name} initialized with ${this.callbackEvents.length} callbacks`);
+        logger.info(`Events system ${this.name} initialized with ${this.callbackEvents.length} callbacks`);
     }
 
     /**
@@ -63,7 +64,7 @@ export class Events extends BaseEntity {
         if (typeof callback === 'function') {
             this.callbackEvents.push(callback);
         } else {
-            this.log('Provided callback is not a function');
+            logger.warn('Provided callback is not a function');
         }
     }
 
@@ -89,6 +90,6 @@ export class Events extends BaseEntity {
      */
     onUnlock(): void {
         super.onUnlock();
-        this.log(`Event ${this.name} is now ready to trigger callbacks`);
+        logger.info(`Event ${this.name} is now ready to trigger callbacks`);
     }
 }

@@ -2,6 +2,7 @@ import { Building, Resource, Storage } from "../entities";
 import { Upgrade } from "./upgrade";
 import { SaveManager } from "./saveManager";
 import { BaseEntity } from "./base-entity";
+import { logger } from "../utils/logger";
 /**
  * Game class that manages the entire game state and core loop functionality.
  */
@@ -98,7 +99,7 @@ export class Game {
             this.upgrades.push(entity);
         }
         
-        this.log(`Entity ${entity.name} (${entity.id}) added to game`);
+        logger.info(`Entity ${entity.name} (${entity.id}) added to game`);
     }
 
     /**
@@ -132,7 +133,7 @@ export class Game {
         entity.removeAllListeners();
         
         this.entities.delete(entityId);
-        this.log(`Entity ${entity.name} (${entityId}) removed from game`);
+        logger.info(`Entity ${entity.name} (${entityId}) removed from game`);
         return true;
     }
 
@@ -250,7 +251,7 @@ export class Game {
      */
     saveState(): void {
         // TODO: Implement actual save functionality
-        this.log("Game state saved.");
+        logger.info("Game state saved.");
     }
 
     /**
@@ -259,7 +260,7 @@ export class Game {
      */
     loadState(): void {
         // TODO: Implement actual load functionality
-        this.log("Game state loaded.");
+        logger.info("Game state loaded.");
     }
 
     /**
@@ -272,7 +273,7 @@ export class Game {
         this.isRunning = true;
         this.lastUpdate = Date.now();
         this.gameLoop();
-        this.log('Game started');
+        logger.info('Game started');
     }
 
     /**
@@ -285,7 +286,7 @@ export class Game {
             this.clearTimer(this.gameLoopTimerId);
             this.gameLoopTimerId = null;
         }
-        this.log('Game paused');
+        logger.info('Game paused');
     }
 
     /**
@@ -298,7 +299,7 @@ export class Game {
         this.isRunning = true;
         this.lastUpdate = Date.now();
         this.gameLoop();
-        this.log('Game resumed');
+        logger.info('Game resumed');
     }
 
 
@@ -414,14 +415,4 @@ export class Game {
         }
     }
 
-    /**
-     * Environment-agnostic logging
-     * Uses console.log if available, otherwise silent
-     * @private
-     */
-    private log(message: string): void {
-        if (typeof (globalThis as any).console?.log === 'function') {
-            (globalThis as any).console.log(message);
-        }
-    }
 }

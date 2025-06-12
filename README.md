@@ -33,6 +33,18 @@ Timers track time-based activities like resource gathering, building constructio
 
 A flexible system for managing when an entity (resource, building, upgrade) becomes available to the player, based on certain conditions.
 
+### Advanced Logging System
+
+Incrementa features a sophisticated, configurable logging system with multiple output drivers and debug mode control. The logging system is completely environment-agnostic, working seamlessly in browsers, Node.js, and any JavaScript runtime.
+
+**Key Features:**
+- **Multiple Output Drivers**: Web console (default), file logging, and Node.js-specific console
+- **Debug Mode Control**: Global on/off switch for all framework logging
+- **Log Levels**: DEBUG, INFO, WARN, ERROR with filtering capabilities
+- **Runtime Configuration**: Change logging behavior dynamically without restarting
+- **Environment Agnostic**: Works in any JavaScript environment using dependency injection
+- **Performance Optimized**: Buffered file logging and level-based filtering
+
 ## Technical Overview
 
 Incrementa is structured using Object-Oriented Programming (OOP) principles. Entities share common traits, reducing redundant code and providing a highly extendable base for additional features.
@@ -201,6 +213,155 @@ miner.addUpgrade(upgrade);
 ```ts
 const storage = new Storage("Iron Storage", "Stores iron", {wood: 20}, 5, 100, () => true);
 storage.addResource(iron);
+```
+
+## Advanced Logging Configuration
+
+Incrementa includes a basic logging system that can be configured for different environments and use cases.
+
+### Basic Usage
+
+```ts
+import { setDebugMode, logger } from 'incrementa';
+
+// Enable debug mode to see framework logs
+setDebugMode(true);
+
+// Use the logger in your game code
+logger.info('Game started successfully');
+logger.warn('Resource limit approaching');
+logger.error('Failed to save game state');
+logger.debug('Detailed debugging information');
+```
+
+### Web Console Logging (Default)
+
+The framework uses web console logging by default, which works in both browsers and Node.js:
+
+```ts
+import { Game, SaveManager } from 'incrementa';
+
+// Default configuration - logs to console when debug mode is enabled
+const saveManager = new SaveManager(/* your storage provider */);
+const game = new Game(saveManager);
+
+// Enable debug mode to see framework logs
+setDebugMode(true);
+```
+
+### File Logging for Node.js
+
+Configure file logging for server environments or when you need persistent logs:
+
+```ts
+import { setLoggerDriver, setDebugMode } from 'incrementa';
+import fs from 'fs';
+
+// Configure file logging
+setLoggerDriver('file', {
+  filePath: './game.log',
+  fileWriter: (path, data) => {
+    fs.appendFileSync(path, data);
+  }
+});
+
+setDebugMode(true);
+
+// All framework logs will now be written to ./game.log
+```
+
+### Node.js Console with Colors
+
+For Node.js environments, use the enhanced console driver with color coding:
+
+```ts
+import { setLoggerDriver, setDebugMode } from 'incrementa';
+
+// Configure Node.js console with colors
+setLoggerDriver('node');
+setDebugMode(true);
+
+// Logs will appear with color coding in the terminal
+```
+
+### Advanced Configuration
+
+```ts
+import { 
+  setDebugMode, 
+  setLogLevel, 
+  setLoggerDriver, 
+  LogLevel, 
+  logger 
+} from 'incrementa';
+
+// Enable debug mode
+setDebugMode(true);
+
+// Set minimum log level (only WARN and ERROR will be shown)
+setLogLevel(LogLevel.WARN);
+
+// Configure async file logging
+setLoggerDriver('file', {
+  filePath: './logs/incrementa.log',
+  fileWriter: async (path, data) => {
+    await fs.promises.appendFile(path, data);
+  }
+});
+
+// Runtime logging configuration
+logger.info('This will not be shown (below WARN level)');
+logger.warn('This warning will be logged to file');
+logger.error('This error will be logged to file');
+
+// Change driver at runtime
+setLoggerDriver('web'); // Switch back to console
+logger.error('This will now appear in console');
+```
+
+### Production Configuration
+
+For production environments, disable debug mode to prevent any logging overhead:
+
+```ts
+import { setDebugMode } from 'incrementa';
+
+// Disable all framework logging in production
+setDebugMode(false);
+
+// No logs will be output regardless of level or driver configuration
+```
+
+### Performance and Debug Mode Behavior
+
+Understanding how the logging system behaves in different modes is crucial for production deployments.
+
+#### Default Behavior (Debug Mode OFF)
+
+```ts
+import { logger } from 'incrementa';
+
+// Debug mode is FALSE by default
+logger.info('This message will not appear anywhere');
+logger.error('This error will also be silent');
+logger.warn('No warnings will be shown');
+logger.debug('No debug output');
+
+// All calls above return immediately with zero output
+```
+
+#### Enabling Debug Mode for Troubleshooting
+
+Enable debug mode at runtime to troubleshoot issues without code changes:
+
+```ts
+import { setDebugMode, setLogLevel, LogLevel } from 'incrementa';
+
+// Enable debug mode and set detailed logging
+setDebugMode(true);
+setLogLevel(LogLevel.DEBUG);
+
+// Now all previously silent logs will appear
 ```
 
 ## Roadmap
