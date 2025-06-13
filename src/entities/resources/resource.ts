@@ -42,13 +42,15 @@ export class Resource extends BaseEntity {
         unlockCondition?: () => boolean;
         id?: string;
         tags?: string[];
+        isUnlocked?: boolean;
     }) {
         super({
             id: config.id,
             name: config.name,
             description: config.description,
             unlockCondition: config.unlockCondition,
-            tags: config.tags
+            tags: config.tags,
+            isUnlocked: config.isUnlocked
         });
         this.amount = config.initialAmount || 0;
         this.rate = config.rate || 0;
@@ -68,7 +70,9 @@ export class Resource extends BaseEntity {
      * Update hook - called each game tick for passive generation
      */
     onUpdate(deltaTime: number): void {
-        if (this.basePassiveRate > 0) {
+        // @TODO check this if logic is correct
+        // If basePassiveRate is set and resource is unlocked, generate passive resources
+        if (this.basePassiveRate > 0 && this.isUnlocked) {
             const passiveAmount = (this.basePassiveRate * deltaTime) / 1000;
             
             // Log passive generation periodically (every ~5 seconds)

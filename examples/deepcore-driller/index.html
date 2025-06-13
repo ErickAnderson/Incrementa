@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deepcore Driller</title>
+  </head>
+  <body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white">
+    <!-- Header Section -->
+    <header class="border-b border-blue-800/30 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="text-4xl">🗻</div>
+            <div>
+              <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                DeepCore Driller
+              </h1>
+              <p class="text-sm text-blue-200/70">Industrial Mining Simulation</p>
+            </div>
+          </div>
+          <div class="text-sm text-blue-200/60">
+            Framework: <span class="text-cyan-400 font-semibold">Incrementa</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="max-w-7xl mx-auto p-6">
+      <!-- Top Resource Summary -->
+      <div class="mb-8">
+        <div class="bg-gradient-to-r from-slate-800/80 to-blue-800/40 rounded-xl border border-blue-700/30 p-6 backdrop-blur-sm">
+          <h2 class="text-xl font-bold text-cyan-300 mb-4 flex items-center">
+            <div class="w-2 h-2 bg-cyan-400 rounded-full mr-3 animate-pulse"></div>
+            Resource Overview & Production
+          </h2>
+          
+          <!-- Resource Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Ore Resource Card -->
+            <div id="ore-resource" class="bg-gradient-to-br from-amber-900/40 to-orange-800/40 rounded-lg border border-amber-600/30 p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                  <div class="text-2xl">🪨</div>
+                  <div>
+                    <div class="font-bold text-amber-300">Ore</div>
+                    <div class="text-xs text-amber-200/60">Raw Material</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div id="ore-amount" class="text-2xl font-bold text-amber-100">0</div>
+                  <div id="ore-rate" class="text-xs text-amber-300">+0/sec</div>
+                </div>
+              </div>
+              <div class="flex justify-between text-xs text-amber-200/70">
+                <span>Storage:</span>
+                <span id="ore-capacity">Unlimited</span>
+              </div>
+              <div class="w-full bg-amber-900/30 rounded-full h-1.5 mt-2">
+                <div id="ore-progress" class="bg-gradient-to-r from-amber-500 to-orange-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <!-- Metal Resource Card -->
+            <div id="metal-resource" class="bg-gradient-to-br from-slate-700/40 to-gray-600/40 rounded-lg border border-slate-500/30 p-4" style="display: none;">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                  <div class="text-2xl">🔩</div>
+                  <div>
+                    <div class="font-bold text-slate-300">Metal</div>
+                    <div class="text-xs text-slate-400/60">Refined Material</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div id="metal-amount" class="text-2xl font-bold text-slate-100">0</div>
+                  <div id="metal-rate" class="text-xs text-slate-300">+0/sec</div>
+                </div>
+              </div>
+              <div class="flex justify-between text-xs text-slate-300/70">
+                <span>Storage:</span>
+                <span id="metal-capacity">Unlimited</span>
+              </div>
+              <div class="w-full bg-slate-700/30 rounded-full h-1.5 mt-2">
+                <div id="metal-progress" class="bg-gradient-to-r from-slate-400 to-gray-300 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <!-- Energy Resource Card -->
+            <div id="energy-resource" class="bg-gradient-to-br from-purple-800/40 to-indigo-700/40 rounded-lg border border-purple-600/30 p-4" style="display: none;">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                  <div class="text-2xl">⚡</div>
+                  <div>
+                    <div class="font-bold text-purple-300">Energy</div>
+                    <div class="text-xs text-purple-400/60">Pure Power</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div id="energy-amount" class="text-2xl font-bold text-purple-100">0</div>
+                  <div id="energy-rate" class="text-xs text-purple-300">+0/sec</div>
+                </div>
+              </div>
+              <div class="flex justify-between text-xs text-purple-300/70">
+                <span>Storage:</span>
+                <span id="energy-capacity">Unlimited</span>
+              </div>
+              <div class="w-full bg-purple-800/30 rounded-full h-1.5 mt-2">
+                <div id="energy-progress" class="bg-gradient-to-r from-purple-500 to-indigo-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual Mining Section -->
+          <div class="bg-slate-700/30 rounded-lg border border-slate-600/30 p-4">
+            <h3 class="font-semibold text-blue-300 mb-3 flex items-center">
+              <span class="text-lg mr-2">⛏️</span>
+              Manual Operations
+            </h3>
+            <button id="mine-button" class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 px-6 py-3 rounded-lg font-bold text-white cursor-pointer shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95">
+              <span class="flex items-center space-x-2">
+                <span>⛏️</span>
+                <span>Mine Ore</span>
+                <span class="bg-blue-800/50 px-2 py-1 rounded text-xs">+1</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Three Column Layout -->
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Buildings & Construction -->
+        <div class="space-y-6">
+          <div class="bg-gradient-to-br from-green-900/30 to-emerald-800/30 rounded-xl border border-green-700/30 p-6 backdrop-blur-sm">
+            <h2 class="text-xl font-bold text-green-300 mb-6 flex items-center">
+              <div class="w-2 h-2 bg-green-400 rounded-full mr-3 animate-pulse"></div>
+              Construction & Buildings
+            </h2>
+            
+            <div id="buildings-container" class="space-y-4">
+              <!-- Miner Building -->
+              <div id="miner-building" class="bg-green-800/20 border border-green-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-green-800/30" style="display: none;">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">⛏️</span>
+                    <div>
+                      <div class="font-bold text-green-200">Miner</div>
+                      <div class="text-xs text-green-300/60">Automated Extraction</div>
+                    </div>
+                  </div>
+                  <div class="bg-green-900/50 px-2 py-1 rounded text-green-300 font-mono text-sm">
+                    <span id="miner-count">x0</span>
+                  </div>
+                </div>
+                <div class="text-xs text-green-200/70 mb-3">Generates 2 Ore per second automatically</div>
+                <div class="flex justify-between items-center text-xs text-green-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">10 Ore</span>
+                </div>
+                <div id="miner-progress" class="text-xs text-blue-400 mb-3" style="display: none;"></div>
+                <button id="miner-button" class="w-full cursor-pointer bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Build Miner
+                </button>
+              </div>
+
+              <!-- Smelter Building -->
+              <div id="smelter-building" class="bg-orange-800/20 border border-orange-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-orange-800/30" style="display: none;">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">🔥</span>
+                    <div>
+                      <div class="font-bold text-orange-200">Smelter</div>
+                      <div class="text-xs text-orange-300/60">Ore Processing</div>
+                    </div>
+                  </div>
+                  <div class="bg-orange-900/50 px-2 py-1 rounded text-orange-300 font-mono text-sm">
+                    <span id="smelter-count">x0</span>
+                  </div>
+                </div>
+                <div class="text-xs text-orange-200/70 mb-3">Converts 3 Ore → 1 Metal per second</div>
+                <div class="flex justify-between items-center text-xs text-orange-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">25 Ore</span>
+                </div>
+                <div id="smelter-progress" class="text-xs text-blue-400 mb-3" style="display: none;"></div>
+                <button id="smelter-button" class="w-full cursor-pointer bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Build Smelter
+                </button>
+              </div>
+
+              <!-- Power Core Building -->
+              <div id="power-core-building" class="bg-purple-800/20 border border-purple-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-purple-800/30" style="display: none;">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">⚡</span>
+                    <div>
+                      <div class="font-bold text-purple-200">Power Core</div>
+                      <div class="text-xs text-purple-300/60">Energy Generation</div>
+                    </div>
+                  </div>
+                  <div class="bg-purple-900/50 px-2 py-1 rounded text-purple-300 font-mono text-sm">
+                    <span id="power-core-count">x0</span>
+                  </div>
+                </div>
+                <div class="text-xs text-purple-200/70 mb-3">Converts 2 Metal → 1 Energy per 2 seconds</div>
+                <div class="flex justify-between items-center text-xs text-purple-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">50 Ore, 20 Metal</span>
+                </div>
+                <div id="power-core-progress" class="text-xs text-blue-400 mb-3" style="display: none;"></div>
+                <button id="power-core-button" class="w-full cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Build Power Core
+                </button>
+              </div>
+
+              <!-- Storage Building -->
+              <div id="storage-building" class="bg-blue-800/20 border border-blue-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-blue-800/30" style="display: none;">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">📦</span>
+                    <div>
+                      <div class="font-bold text-blue-200">Storage Unit</div>
+                      <div class="text-xs text-blue-300/60">Capacity Expansion</div>
+                    </div>
+                  </div>
+                  <div class="bg-blue-900/50 px-2 py-1 rounded text-blue-300 font-mono text-sm">
+                    <span id="storage-count">x0</span>
+                  </div>
+                </div>
+                <div class="text-xs text-blue-200/70 mb-3">+100 Ore, +50 Metal, +25 Energy capacity</div>
+                <div class="flex justify-between items-center text-xs text-blue-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">15 Ore, 5 Metal</span>
+                </div>
+                <div id="storage-progress" class="text-xs text-blue-400 mb-3" style="display: none;"></div>
+                <button id="storage-button" class="w-full cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Build Storage
+                </button>
+              </div>
+
+              <!-- Deepcore Reactor Building -->
+              <div id="deepcore-reactor-building" class="bg-gradient-to-r from-red-800/20 to-pink-800/20 border border-red-600/30 rounded-lg p-4 transition-all duration-300 hover:from-red-800/30 hover:to-pink-800/30" style="display: none;">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">🗻</span>
+                    <div>
+                      <div class="font-bold text-red-200">Deepcore Reactor</div>
+                      <div class="text-xs text-red-300/60">Ultimate Achievement</div>
+                    </div>
+                  </div>
+                  <div class="bg-red-900/50 px-2 py-1 rounded text-red-300 font-mono text-sm">
+                    <span id="deepcore-reactor-count">x0</span>
+                  </div>
+                </div>
+                <div class="text-xs text-red-200/70 mb-3">The final goal! Build this to win the game!</div>
+                <div class="flex justify-between items-center text-xs text-red-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">500 Ore, 200 Metal, 100 Energy</span>
+                </div>
+                <div id="deepcore-reactor-progress" class="text-xs text-blue-400 mb-3" style="display: none;"></div>
+                <button id="deepcore-reactor-button" class="w-full cursor-pointer bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-all duration-200" disabled>
+                  Build Reactor
+                </button>
+              </div>
+
+              <!-- No Buildings Message -->
+              <div id="no-buildings" class="text-gray-400 text-center py-8">
+                <div class="text-4xl mb-2">🏗️</div>
+                <div>Start mining to unlock buildings!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Column: Production Status & Storage -->
+        <div class="space-y-6">
+          <!-- Production Status -->
+          <div class="bg-gradient-to-br from-yellow-900/30 to-amber-800/30 rounded-xl border border-yellow-700/30 p-6 backdrop-blur-sm">
+            <h2 class="text-xl font-bold text-yellow-300 mb-6 flex items-center">
+              <div class="w-2 h-2 bg-yellow-400 rounded-full mr-3 animate-pulse"></div>
+              Production Status
+            </h2>
+            
+            <div id="production-status" class="space-y-4">
+              <!-- Production items will be added here dynamically -->
+              <div class="text-center text-yellow-200/60 py-8">
+                <div class="text-4xl mb-2">⚙️</div>
+                <div>No active production</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Win Condition Progress -->
+          <div class="bg-gradient-to-br from-red-900/30 to-pink-800/30 rounded-xl border border-red-700/30 p-6 backdrop-blur-sm">
+            <h2 class="text-xl font-bold text-red-300 mb-4 flex items-center">
+              <div class="w-2 h-2 bg-red-400 rounded-full mr-3 animate-pulse"></div>
+              Mission Objective
+            </h2>
+            <div class="text-red-200/80 mb-4">
+              Build the Deepcore Reactor to reach the planet's core and win the game!
+            </div>
+            <div id="win-progress" class="text-sm text-red-300/70">
+              <!-- Win progress details will be populated here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Upgrades & Research -->
+        <div class="space-y-6">
+          <div class="bg-gradient-to-br from-indigo-900/30 to-purple-800/30 rounded-xl border border-indigo-700/30 p-6 backdrop-blur-sm">
+            <h2 class="text-xl font-bold text-indigo-300 mb-6 flex items-center">
+              <div class="w-2 h-2 bg-indigo-400 rounded-full mr-3 animate-pulse"></div>
+              Research & Upgrades
+            </h2>
+            
+            <div id="upgrades-container" class="space-y-4">
+              <!-- Drill Efficiency Upgrade -->
+              <div id="drill-efficiency-upgrade" class="bg-indigo-800/20 border border-indigo-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-indigo-800/30" style="display: none;">
+                <div class="flex items-center space-x-2 mb-3">
+                  <span class="text-xl">⛏️</span>
+                  <div>
+                    <div class="font-bold text-indigo-200">Drill Efficiency</div>
+                    <div class="text-xs text-indigo-300/60">Mining Technology</div>
+                  </div>
+                </div>
+                <div class="text-xs text-indigo-200/70 mb-3">Increases Ore production by 50%</div>
+                <div class="flex justify-between items-center text-xs text-indigo-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">50 Ore, 10 Metal</span>
+                </div>
+                <button id="drill-efficiency-button" class="w-full cursor-pointer bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Research
+                </button>
+              </div>
+
+              <!-- Smelting Speed Upgrade -->
+              <div id="smelting-speed-upgrade" class="bg-indigo-800/20 border border-indigo-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-indigo-800/30" style="display: none;">
+                <div class="flex items-center space-x-2 mb-3">
+                  <span class="text-xl">🔥</span>
+                  <div>
+                    <div class="font-bold text-indigo-200">Smelting Speed</div>
+                    <div class="text-xs text-indigo-300/60">Processing Technology</div>
+                  </div>
+                </div>
+                <div class="text-xs text-indigo-200/70 mb-3">Increases Metal production by 40%</div>
+                <div class="flex justify-between items-center text-xs text-indigo-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">80 Ore, 25 Metal</span>
+                </div>
+                <button id="smelting-speed-button" class="w-full cursor-pointer bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Research
+                </button>
+              </div>
+
+              <!-- Storage Optimization Upgrade -->
+              <div id="storage-optimization-upgrade" class="bg-indigo-800/20 border border-indigo-600/30 rounded-lg p-4 transition-all duration-300 hover:bg-indigo-800/30" style="display: none;">
+                <div class="flex items-center space-x-2 mb-3">
+                  <span class="text-xl">📦</span>
+                  <div>
+                    <div class="font-bold text-indigo-200">Storage Optimization</div>
+                    <div class="text-xs text-indigo-300/60">Logistics Technology</div>
+                  </div>
+                </div>
+                <div class="text-xs text-indigo-200/70 mb-3">Doubles all storage capacity</div>
+                <div class="flex justify-between items-center text-xs text-indigo-300/60 mb-3">
+                  <span>Cost:</span>
+                  <span class="font-mono">100 Ore, 40 Metal, 10 Energy</span>
+                </div>
+                <button id="storage-optimization-button" class="w-full cursor-pointer bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-bold text-white transition-colors duration-200" disabled>
+                  Research
+                </button>
+              </div>
+
+              <!-- No Upgrades Message -->
+              <div id="no-upgrades" class="text-gray-400 text-center py-8">
+                <div class="text-4xl mb-2">🔬</div>
+                <div>No research available yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Win Screen (hidden by default) -->
+    <div id="win-screen" class="fixed inset-0 bg-black bg-opacity-80 items-center justify-center" style="display: none;">
+      <div class="bg-gray-800 p-8 rounded-lg text-center">
+        <h1 class="text-4xl font-bold text-yellow-400 mb-4">🎉 Victory!</h1>
+        <p class="text-xl mb-4">You've built the Deepcore Reactor!</p>
+        <p class="text-gray-300">Time: <span id="completion-time"></span></p>
+      </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

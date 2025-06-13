@@ -32,6 +32,7 @@ export class Storage extends Building {
         buildTime?: number;
         capacities?: Record<string, number>;
         unlockCondition?: () => boolean;
+        isUnlocked?: boolean;
     }) {
         super({
             id: config.id,
@@ -41,7 +42,9 @@ export class Storage extends Building {
             cost: config.cost,
             buildTime: config.buildTime,
             productionRate: 0, // Storage doesn't produce resources directly
-            unlockCondition: config.unlockCondition
+            unlockCondition: config.unlockCondition,
+            isUnlocked: config.isUnlocked
+            // @TODO: check the usage of this isUnlocked parameter, not sure if it is needed here
         });
         
         this.resourceCapacities = new Map();

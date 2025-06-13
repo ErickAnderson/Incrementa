@@ -137,6 +137,26 @@ export class ProducerBuilding extends Building {
   }
 
   /**
+   * Attempts to resume production if conditions are now met
+   * Called when capacity changes or resources become available
+   * @returns Whether production was resumed
+   */
+  tryResumeProduction(): boolean {
+    // Only try to resume if we're not already producing
+    if (this.productionState.isProducing) {
+      return false;
+    }
+
+    // Only try to resume if we're unlocked and not building
+    if (!this.isUnlocked || this.isBuilding) {
+      return false;
+    }
+
+    // Attempt to start production if conditions are now met
+    return this.startProduction();
+  }
+
+  /**
    * Checks if production can start/continue
    * @returns Whether all production requirements are met
    */
@@ -224,7 +244,8 @@ export class ProducerBuilding extends Building {
       return;
     }
 
-    this.productionState.timeSinceLastCycle += deltaTime;
+    // Convert deltaTime from milliseconds to seconds for proper cycle timing
+    this.productionState.timeSinceLastCycle += deltaTime / 1000;
     this.stats.totalProductionTime += deltaTime;
 
     // Calculate cycle duration based on production rate

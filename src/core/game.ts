@@ -125,6 +125,19 @@ export class Game {
         this.eventManager.registerEntity(entity);
         this.eventManager.routeEntityEvents(entity);
         
+        // Set up production optimization for building completion events
+        if (entity instanceof Building) {
+            entity.on('buildComplete', () => {
+                // When a building completes construction, optimize production
+                Promise.resolve().then(() => {
+                    const optimizationResult = this.optimizeProduction();
+                    if (optimizationResult.started > 0) {
+                        logger.info(`Building completion triggered production optimization: ${optimizationResult.started} producers started`);
+                    }
+                });
+            });
+        }
+        
         // Register unlock condition if entity has one and isn't already unlocked
         const unlockCondition = entity.getUnlockCondition();
         if (unlockCondition && !entity.isUnlocked) {
@@ -144,6 +157,15 @@ export class Game {
                 // Set game reference for capacity management
                 entity.setGameReference(this);
                 logger.info(`Game: Storage '${entity.name}' added - now managing ${this.storages.length} storage buildings`);
+                
+                // Optimize production when storage capacity changes
+                // This allows stopped producers to resume if they now have capacity
+                Promise.resolve().then(() => {
+                    const optimizationResult = this.optimizeProduction();
+                    if (optimizationResult.started > 0) {
+                        logger.info(`Storage addition triggered production resumption: ${optimizationResult.started} producers restarted`);
+                    }
+                }); // Use Promise to ensure the storage is fully set up before optimization
             }
             // Set game reference for producer buildings
             if ('setGameReference' in entity) {
@@ -518,7 +540,7 @@ export class Game {
         let storageCount = 0;
         
         for (const storage of this.storages) {
-            if (storage.isUnlocked) {
+            if (storage.isBuilt) {
                 const capacity = storage.getCapacityFor(resourceId);
                 if (capacity !== undefined) {
                     totalCapacity += capacity;

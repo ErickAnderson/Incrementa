@@ -26,6 +26,7 @@ export class Building extends BaseEntity implements CostProvider {
     upgradesApplied: Upgrade[];
     protected game?: Game;
     private constructionTimerId: number | null;
+    private _constructionCompleted: boolean;
 
     /**
      * Constructor for the Building class.
@@ -53,13 +54,15 @@ export class Building extends BaseEntity implements CostProvider {
         unlockCondition?: () => boolean;
         id?: string;
         tags?: string[];
+        isUnlocked?: boolean;
     }) {
         super({
             id: config.id,
             name: config.name,
             description: config.description,
             unlockCondition: config.unlockCondition,
-            tags: config.tags
+            tags: config.tags,
+            isUnlocked: config.isUnlocked
         });
         
         // Handle both new costs and legacy cost formats
@@ -82,6 +85,9 @@ export class Building extends BaseEntity implements CostProvider {
         this.isBuilding = false;
         this.upgradesApplied = [];
         this.constructionTimerId = null;
+        // @TODO Review the usage of this property, not sure if it is needed
+        // Indicates whether construction has completed ?? but what about the building function returning this instead?
+        this._constructionCompleted = false;
     }
 
 
@@ -166,6 +172,7 @@ export class Building extends BaseEntity implements CostProvider {
         }
         
         this.isBuilding = false;
+        this._constructionCompleted = true;
         if (this.constructionTimerId !== null) {
             this.clearTimer(this.constructionTimerId);
             this.constructionTimerId = null;
@@ -311,6 +318,25 @@ export class Building extends BaseEntity implements CostProvider {
         }
         
         return result.success;
+    }
+
+    /**
+     * Gets whether this building is built and functional
+     * A building is considered built if it's unlocked, not currently building, and construction has completed
+     */
+    get isBuilt(): boolean {
+        // Building must be unlocked and not currently under construction
+        if (!this.isUnlocked || this.isBuilding) {
+            return false;
+        }
+        
+        // If building has no build time, it's instantly built when unlocked
+        if (this.buildTime <= 0) {
+            return true;
+        }
+        
+        // Otherwise, check if construction has completed
+        return this._constructionCompleted;
     }
 
     /**

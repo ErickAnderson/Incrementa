@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Button feedback animations */
+@keyframes button-success {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes button-error {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.btn-success-feedback {
+  animation: button-success 0.3s ease-in-out;
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+}
+
+.btn-error-feedback {
+  animation: button-error 0.3s ease-in-out;
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+}
