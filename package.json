@@ -46,9 +46,16 @@
     "dev": "vite",
     "watch": "vite build --watch",
     "build": "vite build && tsc",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^30.0.0",
+    "jest-environment-node": "^30.0.0",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.8"
   }

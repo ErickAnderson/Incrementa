@@ -427,14 +427,96 @@ setLogLevel(LogLevel.DEBUG);
 // Now all previously silent logs will appear
 ```
 
+## Testing & Quality Assurance
+
+Incrementa follows **Test-Driven Development (TDD)** principles to ensure robust, reliable functionality. The framework includes a comprehensive unit test suite covering all core features.
+
+### Test Coverage
+
+- **151 total tests** across 6 test suites
+- **Core systems**: Game management, timers, events, unlocks
+- **Entity testing**: Resources, buildings, storage, producers
+- **Integration tests**: Time-based scenarios, production chains
+- **Production accuracy**: 5-second timing tests for precise rates
+
+### Development Workflow
+
+**For Contributors and Framework Development:**
+
+1. **Write tests first** - Before implementing new features, create failing tests that define the expected behavior
+2. **Implement feature** - Write the minimum code needed to make tests pass
+3. **Refactor & optimize** - Improve code quality while maintaining test coverage
+4. **Document behavior** - Update documentation and add examples
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage report
+npm run test:coverage
+
+# Run specific test suite
+npm test tests/entities/resource.test.ts
+
+# Watch mode for development
+npm run test:watch
+```
+
+### Test Structure
+
+```
+tests/
+├── core/           # Game, events, timers, unlock systems
+├── entities/       # Resources, buildings, storage, producers
+├── integration/    # Multi-component scenarios and timing tests
+└── setup.ts        # Test utilities and mocking
+```
+
+**Key Testing Principles:**
+- **Isolated tests** - Each test runs independently with clean setup
+- **Time simulation** - Fake timers for consistent time-based testing
+- **Production accuracy** - Tests verify exact production rates and timing
+- **Edge case coverage** - Boundary conditions and error scenarios
+- **Integration validation** - Multi-entity interactions and workflows
+
+See `/tests/README.md` for detailed test documentation and current coverage status.
+
+## Development Guidelines
+
+### Test-Driven Development
+
+**All new framework features must include comprehensive unit tests.** This ensures:
+
+- **Regression prevention** - Changes don't break existing functionality
+- **API contract validation** - Public interfaces work as documented
+- **Edge case handling** - Boundary conditions are properly managed
+- **Performance verification** - Time-sensitive features work accurately
+
+### Code Quality Standards
+
+- **TypeScript strict mode** - Full type safety and compile-time validation
+- **Comprehensive logging** - Debug-friendly with environment-agnostic output
+- **Clear documentation** - Every public method and class is documented
+- **Consistent patterns** - Entity lifecycle hooks and event emission patterns
+
 ## Roadmap
 
-- Phase 1: Core Mechanics
-  Finalize the Resource, Building, Miner, Factory, and Storage entities.
-  Develop a demo game showcasing the library's ease of use.
-  Implement basic game state management (save/load).
-  "scaffolding "
-- Phase 2: Upgrades and Progression
-  Introduce the Upgrade entity.
-  Implement unlock conditions for entities.
-  Develop a simple prestige system.
+- **Phase 1: Core Mechanics** ✅
+  - Finalized Resource, Building, Miner, Factory, and Storage entities
+  - Complete production system with lifecycle management
+  - Comprehensive test suite (151 tests)
+  - DeepCore Driller example game demonstrating all features
+  
+- **Phase 2: Advanced Features** 🚧
+  - Prestige and reset systems
+  - Achievement and milestone tracking
+  - Report and statistics module to track rates, resources and current state of the game
+  - Advanced unlock condition chaining
+  - Performance optimization for large-scale games
+  
+- **Phase 3: Developer Experience** 📋
+  - Framework documentation website
+  - Interactive playground and examples
+  - More game examples to showcase and theme templates
