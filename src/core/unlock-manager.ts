@@ -78,7 +78,7 @@ export class UnlockManager {
             return false;
         }
 
-        return this.performUnlock(conditionEntry);
+        return this.performUnlock(conditionEntry, true);
     }
 
     /**
@@ -110,10 +110,20 @@ export class UnlockManager {
      * @param entry - The unlock condition entry
      * @returns Whether the unlock was successful
      */
-    private performUnlock(entry: UnlockConditionEntry): boolean {
+    private performUnlock(entry: UnlockConditionEntry, force: boolean = false): boolean {
         try {
             // Mark entity as unlocked
-            entry.entity.unlock();
+            if (force) {
+                // For manual unlock, directly set the unlocked state bypassing conditions
+                entry.entity.isUnlocked = true;
+                entry.entity.onUnlock();
+                entry.entity.emit('unlocked', { entity: entry.entity });
+            } else {
+                const unlockResult = entry.entity.unlock();
+                if (!unlockResult) {
+                    return false;
+                }
+            }
             
             // Add to unlocked set
             this.unlockedEntities.add(entry.entity.id);

@@ -3,7 +3,7 @@ import { Building } from '../../src/entities/buildings/building.js';
 import { Resource } from '../../src/entities/resources/resource.js';
 import { Game } from '../../src/core/game.js';
 import { SaveManager } from '../../src/core/save-manager.js';
-import { createMockStorageProvider, fastForward } from '../setup.js';
+import { createMockStorageProvider, fastForward, createUnlockedBuilding, setupGameWithBasicResources, TEST_CONSTANTS } from '../setup.js';
 
 describe('Building Entity', () => {
   let building: Building;
@@ -17,23 +17,13 @@ describe('Building Entity', () => {
     saveManager = new SaveManager(mockStorage);
     game = new Game(saveManager);
 
-    // Create test resources
-    oreResource = new Resource({
-      id: 'ore',
-      name: 'Ore',
-      initialAmount: 100
-    });
-    
-    metalResource = new Resource({
-      id: 'metal', 
-      name: 'Metal',
-      initialAmount: 50
-    });
+    // Create test resources using helper
+    const resources = setupGameWithBasicResources(game);
+    oreResource = resources.ore;
+    metalResource = resources.metal;
 
-    game.addEntity(oreResource);
-    game.addEntity(metalResource);
-
-    building = new Building({
+    // Create unlocked building using helper instead of direct property access
+    building = createUnlockedBuilding(game, {
       id: 'test-building',
       name: 'Test Building',
       description: 'A test building',
@@ -41,20 +31,18 @@ describe('Building Entity', () => {
         { resourceId: 'ore', amount: 10, scalingFactor: 1.2 },
         { resourceId: 'metal', amount: 5, scalingFactor: 1.1 }
       ],
-      buildTime: 3,
-      productionRate: 2,
+      buildTime: TEST_CONSTANTS.BUILD_TIMES.slow,
+      productionRate: TEST_CONSTANTS.PRODUCTION_RATES.normal,
       level: 1
     });
-
-    building.setGame(game);
   });
 
   describe('Basic Properties', () => {
     test('should initialize with correct values', () => {
       expect(building.id).toBe('test-building');
       expect(building.name).toBe('Test Building');
-      expect(building.buildTime).toBe(3);
-      expect(building.productionRate).toBe(2);
+      expect(building.buildTime).toBe(TEST_CONSTANTS.BUILD_TIMES.slow);
+      expect(building.productionRate).toBe(TEST_CONSTANTS.PRODUCTION_RATES.normal);
       expect(building.level).toBe(1);
       expect(building.isBuilding).toBe(false);
     });
@@ -189,24 +177,35 @@ describe('Building Entity', () => {
       expect(mockCallback).toHaveBeenCalled();
     });
 
-    test('should start construction without spending when specified', () => {
+    test('should support debug mode construction without spending resources', () => {
+      // This tests the debug/admin feature for bypassing resource costs
+      // Use case: Game developers testing building mechanics without resource constraints
       const initialOre = oreResource.amount;
       
+      // Debug construction should work even without resources
       expect(building.startConstruction(false)).toBe(true);
-      expect(oreResource.amount).toBe(initialOre); // Should not change
+      expect(oreResource.amount).toBe(initialOre); // Resources should not be spent in debug mode
       expect(building.isBuilding).toBe(true);
     });
   });
 
   describe('isBuilt Logic', () => {
     test('should not be built when not unlocked', () => {
-      building.isUnlocked = false;
-      expect(building.isBuilt).toBe(false);
+      // Create a building with an unlock condition that fails
+      const lockedBuilding = new Building({
+        name: 'Locked Building',
+        costs: [{ resourceId: 'ore', amount: 1, scalingFactor: 1.0 }],
+        buildTime: 0,
+        unlockCondition: () => false // Never unlocks
+      });
+      lockedBuilding.setGame(game);
+      
+      expect(lockedBuilding.isBuilt).toBe(false);
     });
 
     test('should not be built when currently building', () => {
-      building.isUnlocked = true;
-      building.startConstruction();
+      // Use debug construction to test the building state without resource constraints
+      building.startConstruction(false);
       expect(building.isBuilt).toBe(false);
     });
 
@@ -215,13 +214,13 @@ describe('Building Entity', () => {
         name: 'Instant Building',
         buildTime: 0
       });
-      instantBuilding.isUnlocked = true;
+      game.addEntity(instantBuilding);
+      game.unlockEntity(instantBuilding.id);
       
       expect(instantBuilding.isBuilt).toBe(true);
     });
 
     test('should be built after construction completes', async () => {
-      building.isUnlocked = true;
       building.startConstruction();
       
       expect(building.isBuilt).toBe(false);
@@ -232,8 +231,7 @@ describe('Building Entity', () => {
     });
 
     test('should not be built if construction never started', () => {
-      building.isUnlocked = true;
-      // Don't start construction
+      // Don't start construction - building is unlocked but not built
       
       expect(building.isBuilt).toBe(false);
     });

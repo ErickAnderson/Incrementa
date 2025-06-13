@@ -462,6 +462,14 @@ export class Game {
     }
 
     /**
+     * Gets whether the game is currently running
+     * @returns True if the game loop is active
+     */
+    isGameRunning(): boolean {
+        return this.isRunning;
+    }
+
+    /**
      * Gets the unlock manager instance
      * @returns UnlockManager instance
      */
@@ -494,12 +502,37 @@ export class Game {
     }
 
     /**
+     * Manually checks all unlock conditions
+     * This is automatically called during game updates, but can be called manually for testing
+     */
+    checkUnlockConditions(): void {
+        this.unlockManager.checkUnlockConditions();
+    }
+
+    /**
      * Manually unlocks an entity (bypasses condition check)
      * @param entityId - ID of the entity to unlock
      * @returns Whether the entity was successfully unlocked
      */
     unlockEntity(entityId: string): boolean {
-        return this.unlockManager.unlockEntity(entityId);
+        // First try the unlock manager (for entities with conditions)
+        const unlockManagerResult = this.unlockManager.unlockEntity(entityId);
+        if (unlockManagerResult) {
+            return true;
+        }
+
+        // If that fails, try to find and unlock the entity directly
+        const entity = this.getEntityById(entityId);
+        if (entity && !entity.isUnlocked) {
+            // For manual unlock, directly set the unlocked state bypassing conditions
+            entity.isUnlocked = true;
+            entity.onUnlock();
+            entity.emit('unlocked', { entity });
+            logger.info(`Entity ${entity.name} (${entity.id}) manually unlocked`);
+            return true;
+        }
+
+        return false;
     }
 
     /**

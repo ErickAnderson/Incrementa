@@ -474,7 +474,7 @@ export class ProducerBuilding extends Building {
    * @param game - Game instance reference
    */
   setGameReference(game: any): void {
-    this.game = game;
+    this.setGame(game);
   }
 
   /**

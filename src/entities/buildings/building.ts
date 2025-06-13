@@ -24,7 +24,7 @@ export class Building extends BaseEntity implements CostProvider {
     level: number;
     isBuilding: boolean;
     upgradesApplied: Upgrade[];
-    protected game?: Game;
+    private _game?: Game;
     private constructionTimerId: number | null;
     private _constructionCompleted: boolean;
 
@@ -117,9 +117,9 @@ export class Building extends BaseEntity implements CostProvider {
     /**
      * Lifecycle hook called when building levels up
      */
-    onLevelUp(newLevel: number): void {
+    onLevelUp(oldLevel: number, newLevel: number): void {
         logger.info(`${this.name} leveled up to level ${newLevel}`);
-        this.emit('levelUp', { building: this, oldLevel: this.level, newLevel });
+        this.emit('levelUp', { building: this, oldLevel, newLevel });
     }
 
     /**
@@ -156,9 +156,10 @@ export class Building extends BaseEntity implements CostProvider {
         this.onBuildStart();
         
         // Schedule construction completion with environment-agnostic timer
+        const delayMs = this.buildTime * 1000;
         this.constructionTimerId = this.scheduleTimer(() => {
             this.completeConstruction();
-        }, this.buildTime * 1000);
+        }, delayMs);
         
         return true;
     }
@@ -185,8 +186,9 @@ export class Building extends BaseEntity implements CostProvider {
      * @param levels - Number of levels to increase (defaults to 1)
      */
     levelUp(levels: number = 1): void {
+        const oldLevel = this.level;
         this.level += levels;
-        this.onLevelUp(this.level);
+        this.onLevelUp(oldLevel, this.level);
         
         // Recalculate stats based on new level
         this.recalculateStats();
@@ -236,7 +238,7 @@ export class Building extends BaseEntity implements CostProvider {
      * Calculates the total cost based on level and options
      */
     calculateCost(options: CostCalculationOptions = {}): Record<string, number> {
-        if (!this.game?.costSystem) {
+        if (!this._game?.costSystem) {
             // Fallback calculation if no cost system available
             const calculatedCosts: Record<string, number> = {};
             const level = options.level || this.level;
@@ -254,7 +256,7 @@ export class Building extends BaseEntity implements CostProvider {
             return calculatedCosts;
         }
         
-        return this.game.costSystem.calculateCost(this.costs, {
+        return this._game.costSystem.calculateCost(this.costs, {
             level: this.level,
             ...options
         });
@@ -264,11 +266,11 @@ export class Building extends BaseEntity implements CostProvider {
      * Checks if the building's costs can be afforded
      */
     canAfford(options: CostCalculationOptions = {}): boolean {
-        if (!this.game?.costSystem) {
+        if (!this._game?.costSystem) {
             // Fallback validation if no cost system available
             const calculatedCosts = this.calculateCost(options);
             for (const [resourceId, requiredAmount] of Object.entries(calculatedCosts)) {
-                const resource = this.game?.getResourceById(resourceId);
+                const resource = this._game?.getResourceById(resourceId);
                 if (!resource || resource.amount < requiredAmount) {
                     return false;
                 }
@@ -276,7 +278,7 @@ export class Building extends BaseEntity implements CostProvider {
             return true;
         }
         
-        const validation = this.game.costSystem.validateCost(this.costs, {
+        const validation = this._game.costSystem.validateCost(this.costs, {
             level: this.level,
             ...options
         });
@@ -288,11 +290,11 @@ export class Building extends BaseEntity implements CostProvider {
      * Gets detailed cost validation information
      */
     validateCost(options: CostCalculationOptions = {}): CostValidationResult | null {
-        if (!this.game?.costSystem) {
+        if (!this._game?.costSystem) {
             return null;
         }
         
-        return this.game.costSystem.validateCost(this.costs, {
+        return this._game.costSystem.validateCost(this.costs, {
             level: this.level,
             ...options
         });
@@ -302,11 +304,11 @@ export class Building extends BaseEntity implements CostProvider {
      * Attempts to spend resources for construction or upgrade
      */
     spendCost(options: CostCalculationOptions = {}): boolean {
-        if (!this.game?.costSystem) {
+        if (!this._game?.costSystem) {
             return false;
         }
         
-        const result = this.game.costSystem.spendResources(this.costs, {
+        const result = this._game.costSystem.spendResources(this.costs, {
             level: this.level,
             ...options
         });
@@ -343,7 +345,21 @@ export class Building extends BaseEntity implements CostProvider {
      * Sets the game reference for cost system integration
      */
     setGame(game: Game): void {
-        this.game = game;
+        this._game = game;
+    }
+
+    /**
+     * Sets the game reference (alias for setGame for consistency)
+     */
+    setGameReference(game: Game): void {
+        this.setGame(game);
+    }
+
+    /**
+     * Gets the game reference
+     */
+    get game(): Game | undefined {
+        return this._game;
     }
 
     /**
@@ -372,6 +388,7 @@ export class Building extends BaseEntity implements CostProvider {
         if (typeof (globalThis as any).setTimeout === 'function') {
             return (globalThis as any).setTimeout(callback, delay);
         } else {
+            // Fallback for environments without setTimeout
             callback();
             return 0;
         }

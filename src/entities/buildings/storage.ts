@@ -215,7 +215,7 @@ export class Storage extends Building {
      * @internal
      */
     setGameReference(game: any): void {
-        this.game = game;
+        this.setGame(game);
         if (game) {
             logger.debug(`Storage ${this.name}: Game reference set - capacity management active`);
         } else {

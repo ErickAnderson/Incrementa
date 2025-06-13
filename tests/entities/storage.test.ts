@@ -3,7 +3,7 @@ import { Storage } from '../../src/entities/buildings/storage.js';
 import { Resource } from '../../src/entities/resources/resource.js';
 import { Game } from '../../src/core/game.js';
 import { SaveManager } from '../../src/core/save-manager.js';
-import { createMockStorageProvider, fastForward } from '../setup.js';
+import { createMockStorageProvider, fastForward, createUnlockedStorage, setupGameWithBasicResources, TEST_CONSTANTS } from '../setup.js';
 
 describe('Storage Entity', () => {
   let storage: Storage;
@@ -17,36 +17,26 @@ describe('Storage Entity', () => {
     saveManager = new SaveManager(mockStorage);
     game = new Game(saveManager);
 
-    // Create test resources
-    oreResource = new Resource({
-      id: 'ore',
-      name: 'Ore',
-      initialAmount: 50
-    });
+    // Create test resources using helper
+    const resources = setupGameWithBasicResources(game);
+    oreResource = resources.ore;
+    oreResource.setAmount(50); // Adjust to test values
     
-    metalResource = new Resource({
-      id: 'metal', 
-      name: 'Metal',
-      initialAmount: 25
-    });
+    metalResource = resources.metal;
+    metalResource.setAmount(25); // Adjust to test values
 
-    game.addEntity(oreResource);
-    game.addEntity(metalResource);
-
-    storage = new Storage({
+    // Create unlocked storage using helper instead of direct property access
+    storage = createUnlockedStorage(game, {
       id: 'test-storage',
       name: 'Test Storage',
       description: 'A test storage facility',
       cost: { ore: 20, metal: 10 },
-      buildTime: 2,
+      buildTime: TEST_CONSTANTS.BUILD_TIMES.normal,
       capacities: {
         ore: 100,
         metal: 50
       }
     });
-
-    storage.setGame(game);
-    storage.setGameReference(game);
   });
 
   describe('Basic Properties', () => {
@@ -74,9 +64,6 @@ describe('Storage Entity', () => {
   });
 
   describe('Capacity Management', () => {
-    beforeEach(() => {
-      storage.isUnlocked = true;
-    });
 
     test('should get correct capacity for resources', () => {
       expect(storage.getCapacityFor('ore')).toBe(100);
@@ -127,9 +114,7 @@ describe('Storage Entity', () => {
   });
 
   describe('Capacity Checking', () => {
-    beforeEach(() => {
-      storage.isUnlocked = true;
-    });
+    // Storage is already unlocked from main beforeEach using helper
 
     test('should allow addition within capacity', () => {
       expect(storage.hasCapacity('ore', 30)).toBe(true);
@@ -147,8 +132,12 @@ describe('Storage Entity', () => {
     });
 
     test('should handle edge case at exact capacity', () => {
-      expect(storage.hasCapacity('ore', 50)).toBe(true); // 50 + 50 = 100 (exactly at capacity)
-      expect(storage.hasCapacity('ore', 51)).toBe(false); // 50 + 51 > 100
+      const currentAmount = 50;
+      const exactCapacityAmount = 50; // Will exactly reach 100 capacity
+      const overCapacityAmount = 51; // Will exceed 100 capacity
+      
+      expect(storage.hasCapacity('ore', exactCapacityAmount)).toBe(true);
+      expect(storage.hasCapacity('ore', overCapacityAmount)).toBe(false);
     });
   });
 
@@ -182,19 +171,25 @@ describe('Storage Entity', () => {
 
   describe('Built vs Unlocked Logic', () => {
     test('should not be built when not unlocked', () => {
-      storage.isUnlocked = false;
-      expect(storage.isBuilt).toBe(false);
+      // Create a separate locked storage for this test
+      const lockedStorage = new Storage({
+        name: 'Locked Storage',
+        unlockCondition: () => false // Never unlocks
+      });
+      lockedStorage.setGame(game);
+      game.addEntity(lockedStorage);
+      
+      expect(lockedStorage.isBuilt).toBe(false);
     });
 
     test('should not be built when unlocked but building', () => {
-      storage.isUnlocked = true;
-      storage.startConstruction(false); // Start without spending
+      // Use debug construction for this specific test case
+      storage.startConstruction(false); // Debug mode: start without spending
       expect(storage.isBuilt).toBe(false);
     });
 
     test('should be built after construction completes', async () => {
-      storage.isUnlocked = true;
-      storage.startConstruction(false);
+      storage.startConstruction(false); // Debug mode for test
       
       expect(storage.isBuilt).toBe(false);
       
@@ -209,7 +204,8 @@ describe('Storage Entity', () => {
         buildTime: 0,
         capacities: { ore: 50 }
       });
-      instantStorage.isUnlocked = true;
+      game.addEntity(instantStorage);
+      game.unlockEntity(instantStorage.id);
 
       expect(instantStorage.isBuilt).toBe(true);
     });
@@ -217,8 +213,7 @@ describe('Storage Entity', () => {
 
   describe('Game Capacity Integration', () => {
     test('should not contribute to game capacity when not built', () => {
-      storage.isUnlocked = true;
-      storage.startConstruction(false);
+      storage.startConstruction(false); // Debug mode for test
       
       // Game should not count this storage's capacity
       const gameCapacity = game.getTotalCapacityFor('ore');
@@ -226,8 +221,7 @@ describe('Storage Entity', () => {
     });
 
     test('should contribute to game capacity when built', async () => {
-      storage.isUnlocked = true;
-      storage.startConstruction(false);
+      storage.startConstruction(false); // Debug mode for test
       
       await fastForward(storage.buildTime * 1000);
       
@@ -243,8 +237,8 @@ describe('Storage Entity', () => {
         capacities: { ore: 75 }
       });
       instantStorage.setGame(game);
-      instantStorage.isUnlocked = true;
       game.addEntity(instantStorage);
+      game.unlockEntity(instantStorage.id);
 
       const gameCapacity = game.getTotalCapacityFor('ore');
       expect(gameCapacity).toBe(75); // Instant storage contributes immediately
@@ -282,7 +276,6 @@ describe('Storage Entity', () => {
     });
 
     test('should emit capacityReached events during updates', () => {
-      storage.isUnlocked = true;
       oreResource.setAmount(100); // At capacity
       
       const mockCallback = jest.fn();

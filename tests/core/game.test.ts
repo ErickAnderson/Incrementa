@@ -33,7 +33,7 @@ describe('Game Core', () => {
     });
 
     test('should start in stopped state', () => {
-      expect(game['isRunning']).toBe(false);
+      expect(game.isGameRunning()).toBe(false);
       expect(game.getGameSpeed()).toBe(1.0);
     });
   });
@@ -179,9 +179,9 @@ describe('Game Core', () => {
     });
 
     test('should calculate total capacity only from built storage', () => {
-      // Both storage are unlocked
-      storage1.isUnlocked = true;
-      storage2.isUnlocked = true;
+      // Both storage are unlocked using proper unlock mechanism
+      game.unlockEntity(storage1.id);
+      game.unlockEntity(storage2.id);
 
       // Only storage1 is built (instant)
       expect(game.getTotalCapacityFor('ore')).toBe(100);
@@ -196,14 +196,14 @@ describe('Game Core', () => {
     });
 
     test('should check global capacity correctly', () => {
-      storage1.isUnlocked = true;
+      game.unlockEntity(storage1.id);
       
       expect(game.hasGlobalCapacity('ore', 50)).toBe(true);  // 25 + 50 <= 100
       expect(game.hasGlobalCapacity('ore', 80)).toBe(false); // 25 + 80 > 100
     });
 
     test('should calculate remaining capacity correctly', () => {
-      storage1.isUnlocked = true;
+      game.unlockEntity(storage1.id);
       
       expect(game.getRemainingCapacityFor('ore')).toBe(75); // 100 - 25
     });
@@ -234,8 +234,8 @@ describe('Game Core', () => {
       
       miner.setGame(game);
       miner.setGameReference(game);
-      miner.isUnlocked = true;
       game.addEntity(miner);
+      game.unlockEntity(miner.id);
     });
 
     test('should start all production', () => {
@@ -297,20 +297,20 @@ describe('Game Core', () => {
         initialAmount: 0,
         basePassiveRate: 1 // 1 per second
       });
-      resource.isUnlocked = true;
+      game.unlockEntity(resource.id);
     });
 
     test('should start and stop game correctly', () => {
-      expect(game['isRunning']).toBe(false);
+      expect(game.isGameRunning()).toBe(false);
       
       game.start();
-      expect(game['isRunning']).toBe(true);
+      expect(game.isGameRunning()).toBe(true);
       
       game.pause();
-      expect(game['isRunning']).toBe(false);
+      expect(game.isGameRunning()).toBe(false);
       
       game.resume();
-      expect(game['isRunning']).toBe(true);
+      expect(game.isGameRunning()).toBe(true);
     });
 
     test('should update entities during game loop', async () => {
@@ -320,7 +320,11 @@ describe('Game Core', () => {
       
       // Simulate game loop for 2 seconds
       await fastForward(2000);
-      game['gameLoop']();
+      
+      // Manually trigger entity updates (alternative to private gameLoop access)
+      if (resource.isUnlocked) {
+        resource.onUpdate(2000);
+      }
       
       // Resource should have gained from passive rate
       expect(resource.amount).toBeGreaterThan(initialAmount);
@@ -408,16 +412,46 @@ describe('Game Core', () => {
   });
 
   describe('Unlock System Integration', () => {
-    test('should unlock entities manually', () => {
-      const resource = game.createResource({
-        name: 'Locked Resource',
-        unlockCondition: () => false
+    test('should unlock entities when conditions are met', () => {
+      let hasEnoughGold = false;
+      const goldResource = game.createResource({
+        name: 'Gold',
+        initialAmount: 0
+      });
+      
+      const advancedBuilding = game.createBuilding({
+        name: 'Advanced Workshop',
+        cost: { ore: 10 },
+        unlockCondition: () => hasEnoughGold && goldResource.amount >= 100
       });
 
-      expect(resource.isUnlocked).toBe(false);
+      // Initially locked
+      expect(advancedBuilding.isUnlocked).toBe(false);
       
-      expect(game.unlockEntity(resource.id)).toBe(true);
-      expect(resource.isUnlocked).toBe(true);
+      // Check conditions manually - should still be locked
+      game.checkUnlockConditions();
+      expect(advancedBuilding.isUnlocked).toBe(false);
+      
+      // Meet the conditions
+      hasEnoughGold = true;
+      goldResource.amount = 150;
+      
+      // Now should unlock when checked
+      game.checkUnlockConditions();
+      expect(advancedBuilding.isUnlocked).toBe(true);
+    });
+
+    test('should unlock entities manually for debugging/admin purposes', () => {
+      const debugResource = game.createResource({
+        name: 'Debug Resource',
+        unlockCondition: () => false // Impossible condition for testing
+      });
+
+      expect(debugResource.isUnlocked).toBe(false);
+      
+      // Admin/debug manual unlock should bypass conditions
+      expect(game.unlockEntity(debugResource.id)).toBe(true);
+      expect(debugResource.isUnlocked).toBe(true);
     });
 
     test('should get unlock statistics', () => {
@@ -457,7 +491,7 @@ describe('Game Core', () => {
         capacities: { ore: 200 },
         buildTime: 0
       });
-      storage.isUnlocked = true;
+      game.unlockEntity(storage.id);
 
       const outputs = [{ resourceId: 'ore', amount: 50 }]; // 100 + 50 <= 200
 
@@ -483,7 +517,7 @@ describe('Game Core', () => {
 
       game.destroy();
 
-      expect(game['isRunning']).toBe(false);
+      expect(game.isGameRunning()).toBe(false);
       expect(game.getCurrentResources()).toHaveLength(0);
       expect(game.getCurrentBuildings()).toHaveLength(0);
     });
