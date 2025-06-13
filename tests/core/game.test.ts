@@ -390,7 +390,16 @@ describe('Game Core', () => {
 
       game.emit('testEvent', { data: 'test' });
 
-      expect(mockCallback).toHaveBeenCalledWith({ data: 'test' });
+      expect(mockCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'testEvent',
+          data: expect.objectContaining({
+            data: 'test',
+            timestamp: expect.any(Number)
+          }),
+          timestamp: expect.any(Number)
+        })
+      );
     });
 
     test('should remove event listeners', () => {
@@ -457,9 +466,12 @@ describe('Game Core', () => {
     test('should get unlock statistics', () => {
       const stats = game.getUnlockStats();
       
-      expect(stats).toHaveProperty('pendingUnlocks');
-      expect(stats).toHaveProperty('unlockedCount');
-      expect(stats).toHaveProperty('isActive');
+      expect(stats).toHaveProperty('totalConditions');
+      expect(stats).toHaveProperty('entitiesUnlocked');
+      expect(stats).toHaveProperty('conditionsMet');
+      expect(stats).toHaveProperty('milestonesAchieved');
+      expect(stats).toHaveProperty('averageUnlockTime');
+      expect(stats).toHaveProperty('totalEvaluationTime');
     });
   });
 

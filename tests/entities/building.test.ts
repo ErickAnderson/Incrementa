@@ -18,12 +18,13 @@ describe('Building Entity', () => {
     game = new Game(saveManager);
 
     // Create test resources using helper
-    const resources = setupGameWithBasicResources(game);
+    const resources = setupGameWithBasicResources(saveManager);
+    game = resources.game;
     oreResource = resources.ore;
     metalResource = resources.metal;
 
     // Create unlocked building using helper instead of direct property access
-    building = createUnlockedBuilding(game, {
+    building = createUnlockedBuilding({
       id: 'test-building',
       name: 'Test Building',
       description: 'A test building',

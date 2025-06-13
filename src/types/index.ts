@@ -7,6 +7,15 @@ export * from './production';
 // Cost system types
 export * from './cost-definition';
 
+// Upgrade effects types
+export * from './upgrade-effects';
+
+// Unlock conditions types
+export * from './unlock-conditions';
+
+// System event aliases (to resolve export conflicts)
+export * from './system-events-alias';
+
 export interface SaveData {
   lastPlayTime: number;
   resources: ResourceData[];

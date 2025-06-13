@@ -7,6 +7,8 @@ export { Upgrade } from './upgrade';
 export { UnlockManager } from './unlock-manager';
 export { EventManager } from './event-manager';
 export { CostSystem, createCost, createCosts, ScalingFunctions } from './cost-system';
+export { UpgradeEffectProcessor } from './upgrade-effect-processor';
+export { UnlockConditionEvaluator } from './unlock-condition-evaluator';
 export { 
     getConfig,
     updateConfig,

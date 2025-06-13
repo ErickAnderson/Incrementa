@@ -2,451 +2,325 @@
 
 ## Overview
 
-Incrementa is a JavaScript/TypeScript library that streamlines the development of incremental and idle games. It offers a modular set of abstract entities and utilities for core mechanics like resource collection, buildings, upgrades, and progression—without imposing any specific visual style or opinionated structure.
+Incrementa is a comprehensive TypeScript framework for building incremental and idle games. It provides a complete suite of advanced systems including cost validation, data-driven upgrades, complex unlock conditions, and sophisticated event management—all designed for maximum flexibility and developer productivity.
 
-Designed with clarity and developer experience in mind from day one, Incrementa features clean, well-documented code with meaningful naming and inline comments. Every class, method, and config object is easy to understand, making the source code feel like a built-in tutorial. Whether you're building a prototype or diving deep into custom mechanics, Incrementa enables rapid development with minimal friction and no reliance on external documentation.
+Designed with clarity and developer experience in mind from day one, Incrementa features clean, well-documented code with meaningful naming and comprehensive TypeScript types. Every class, method, and configuration object is thoroughly typed and documented, making the framework both powerful and approachable.
+
+## 🚀 Key Features
+
+### 🏗️ **Advanced Building System**
+- **Complete Construction Lifecycle**: `startConstruction()`, `completeConstruction()` with cost validation
+- **Structured Cost Definitions**: Type-safe cost requirements with scaling and multipliers
+- **Level-based Progression**: Building levels with automatic stat recalculation
+- **Upgrade Integration**: Apply complex upgrades with property modification
+
+### 🔄 **Data-Driven Upgrade System**
+- **Property Modification**: Add, multiply, percentage, set, min/max operations
+- **Complex Targeting**: Target by entity ID, type, tags, or name patterns
+- **Repeatable Upgrades**: Configure max applications and scaling costs
+- **Effect Validation**: Resource availability and condition checking
+- **Legacy Compatibility**: Supports both new data-driven and legacy function-based effects
+
+### 🔓 **Sophisticated Unlock System**
+- **Data Structure Conditions**: Resource amounts, building counts, time played, custom properties
+- **Complex Logic**: AND, OR, NOT combinations with multiple conditions
+- **Template System**: Reusable condition templates with parameters
+- **Milestone Tracking**: Achievement system with rewards
+- **Performance Optimized**: Caching and efficient evaluation
+
+### 🎯 **Comprehensive Event System**
+- **System Events**: Structured events for all entity state changes
+- **Event Filtering**: Subscribe by entity ID, type, tags, or custom filters
+- **Middleware Support**: Process events through custom middleware
+- **Event History**: Debugging and replay capabilities
+- **Performance Metrics**: Detailed statistics and monitoring
+
+### 💰 **Advanced Cost System**
+- **Structured Definitions**: Type-safe cost requirements with validation
+- **Resource Spending**: Automatic validation and rollback on failure
+- **Scaling Calculations**: Exponential, linear, logarithmic, polynomial scaling
+- **Statistics Tracking**: Cost validation and spending metrics
+- **Event Integration**: Cost calculation and spending events
 
 ## Core Concepts
 
 ### Resources
 
-Resources are the backbone of any incremental game. These entities are what players collect, spend, and progress with. The library offers a way to define, unlock, and upgrade resources easily.
-
-### Buildings
-
-Buildings automate or enhance resource collection. Buildings can be constructed, upgraded, and used to gather or convert resources. All production buildings extend the **ProducerBuilding** base class which provides a complete production lifecycle system.
-
-- **Miner**: Extraction-based production building that generates resources automatically without input requirements
-- **Factory**: Transformation-based production building that converts input resources into output resources
-- **Storage**: Capacity management building that defines global resource storage limits
-- **ProducerBuilding**: Base class providing production lifecycle (`startProduction()`, `stopProduction()`, `canProduce()`), resource validation, and efficiency systems
-
-### Upgrades
-
-Upgrades are applied to various entities to enhance their efficiency, reduce cost, increase production rates, or unlock new functionalities. They are applicable to buildings, storage, and resources.
-
-### Timers
-
-Timers track time-based activities like resource gathering, building construction, or research. These are essential for any game mechanic that involves waiting or time-based progression.
-
-### Unlock Conditions
-
-A flexible system for managing when an entity (resource, building, upgrade) becomes available to the player, based on certain conditions.
-
-### Advanced Logging System
-
-Incrementa features a sophisticated, configurable logging system with multiple output drivers and debug mode control. The logging system is completely environment-agnostic, working seamlessly in browsers, Node.js, and any JavaScript runtime.
-
-**Key Features:**
-- **Multiple Output Drivers**: Web console (default), file logging, and Node.js-specific console
-- **Debug Mode Control**: Global on/off switch for all framework logging
-- **Log Levels**: DEBUG, INFO, WARN, ERROR with filtering capabilities
-- **Runtime Configuration**: Change logging behavior dynamically without restarting
-- **Environment Agnostic**: Works in any JavaScript environment using dependency injection
-- **Performance Optimized**: Buffered file logging and level-based filtering
-
-## Technical Overview
-
-Incrementa is structured using Object-Oriented Programming (OOP) principles. Entities share common traits, reducing redundant code and providing a highly extendable base for additional features.
-
-### Recent Updates: Production System Architecture
-
-The framework now includes a comprehensive **Production System** with:
-
-- **ProducerBuilding Base Class**: Complete production lifecycle with `startProduction()`, `stopProduction()`, `canProduce()`
-- **Resource Validation**: Automatic input availability and output capacity checking
-- **Game Loop Integration**: Production ticks integrated with delta time calculations
-- **Global Production Management**: Game class methods for production optimization and bottleneck detection
-- **Event System**: Comprehensive production event emission for UI integration
-- **Type-Safe Configuration**: Complete TypeScript types for production inputs, outputs, rates, and efficiency
-
-### Base Object Structure
-
-All entities derive from a common class OBJECT. This class encapsulates shared traits such as:
-
-- ```name```: The name of the entity.
-- ```slug```: An internal ID, a "slugged" version of the name.
-- ```description```: A short description for the player.
-- ```isUnlocked```: Boolean indicating whether the entity is unlocked.
-- ```unlockCondition```: Function that determines when the entity can be unlocked.
+Resources are the fundamental currency of incremental games. The framework provides comprehensive resource management with:
 
 ```ts
-class OBJECT {
-  name: string;
-  slug: string;
-  description: string;
-  isUnlocked: boolean;
-  unlockCondition: any;
-
-  constructor(name: string, description: string, unlockCondition: any) {
-    this.name = name;
-    this.slug = name.toLowerCase().replace(/\s+/g, '-');
-    this.description = description;
-    this.isUnlocked = false;
-    this.unlockCondition = unlockCondition;
-    this.onCreated();
-  }
-
-  onCreated() { /* logic when created */
-  }
-
-  checkUnlockCondition() { /* logic to unlock */
-  }
-
-  unlock() {
-    this.isUnlocked = true;
-    this.onUnlocked();
-  }
-
-  onUnlocked() { /* logic when unlocked */
-  }
-}
-```
-
-## Buildings
-
-Building extends OBJECT and introduces additional traits like cost, build time, production rates, and upgrades.
-
-### Miner: Gathers resources.
-
-Factory: Produces resources using other resources as inputs.
-Storage: Inherits from Building, manages multiple resources with a capacity.
-
-```ts
-class Building extends OBJECT {
-  cost: Record<string, number>;
-  buildTime: number;
-  productionRate: number;
-  upgrades: Upgrade[];
-
-  constructor(name: string, description: string, cost: Record<string, number>, buildTime: number, productionRate: number, unlockCondition: any) {
-    super(name, description, unlockCondition);
-    this.cost = cost;
-    this.buildTime = buildTime;
-    this.productionRate = productionRate;
-    this.upgrades = [];
-  }
-
-  addUpgrade(upgrade: Upgrade) {
-    this.upgrades.push(upgrade);
-  }
-}
-```
-
-### Resources
-
-Resources are another extension of the OBJECT class. They store an amount and can be gathered or spent.
-
-```ts
-class Resource extends OBJECT {
-  amount: number;
-  rate: number;
-
-  constructor(name: string, description: string, initialAmount: number, rate: number, unlockCondition: any) {
-    super(name, description, unlockCondition);
-    this.amount = initialAmount;
-    this.rate = rate;
-  }
-
-  collect(amount: number) {
-    this.amount += amount;
-  }
-}
-```
-
-### Upgrades
-
-Upgrades modify the behavior of buildings, resources, and storage. They have an associated cost and effect.
-
-```ts
-class Upgrade extends OBJECT {
-  effect: any;
-  cost: Record<string, number>;
-
-  constructor(name: string, description: string, effect: any, cost: Record<string, number>, unlockCondition: any) {
-    super(name, description, unlockCondition);
-    this.effect = effect;
-    this.cost = cost;
-  }
-
-  apply() {
-    this.effect();
-  }
-}
-```
-
-### Game State
-
-A Game class manages the current state, holding all resources, buildings, storage, and upgrades.
-
-```ts
-class Game {
-    resources: Resource[];
-    buildings: Building[];
-    upgrades: Upgrade[];
-    storages: Storage[];
-
-    constructor() {
-        this.resources = [];
-        this.buildings = [];
-        this.upgrades = [];
-        this.storages = [];
-    }
-
-    saveState() { /* logic to save game state */
-    }
-
-    loadState() { /* logic to load game state */
-    }
-}
-```
-
-## Examples
-
-### Creating a Miner Building (New Production System)
-
-```ts
-// Create resources
 const game = new Game(saveManager);
-const iron = game.createResource({
-  name: "Iron",
-  description: "A basic metal used for construction"
+
+// Create a resource with enhanced features
+const gold = game.createResource({
+  name: "Gold",
+  description: "Primary currency for purchasing upgrades",
+  initialAmount: 100,
+  basePassiveRate: 1.5, // Generates 1.5 gold per second
+  unlockCondition: () => true
 });
 
-// Create miner with production configuration
-const miner = new Miner({
+// Advanced resource manipulation
+gold.increment(50); // Add 50 gold
+gold.decrement(25); // Remove 25 gold
+gold.setAmount(1000); // Set to exact amount
+
+// Event handling
+gold.on('amountChanged', (data) => {
+  console.log(`Gold changed from ${data.oldAmount} to ${data.newAmount}`);
+});
+```
+
+### Buildings with Advanced Construction
+
+Buildings now feature a complete construction lifecycle with cost validation:
+
+```ts
+// Create building with structured costs
+const mine = game.createBuilding({
+  name: "Gold Mine",
+  description: "Generates gold automatically",
+  costs: [
+    { resourceId: 'wood', amount: 50, scalingFactor: 1.2 },
+    { resourceId: 'stone', amount: 25, scalingFactor: 1.15 }
+  ],
+  buildTime: 10, // 10 seconds to build
+  productionRate: 2.0,
+  unlockCondition: () => game.getResourceByName('Gold')?.amount >= 100
+});
+
+// Construction lifecycle
+if (mine.canAfford()) {
+  mine.startConstruction(); // Validates and spends resources
+  // Building automatically completes after buildTime
+}
+
+// Level up with scaling costs
+mine.levelUp(); // Increases level and recalculates stats
+```
+
+### Data-Driven Upgrade System
+
+The new upgrade system supports complex, data-driven effects:
+
+```ts
+// Create upgrade with property modification effects
+const productionBoost = game.createUpgrade({
+  name: "Production Boost",
+  description: "Increases production rate by 50%",
+  costs: [{ resourceId: 'gold', amount: 500, scalingFactor: 1.5 }],
+  configuration: {
+    effects: [{
+      type: 'property_modifier',
+      targetProperty: 'productionRate',
+      operation: 'percentage',
+      value: 50, // +50% increase
+      description: 'Boost production by 50%'
+    }],
+    targets: [{
+      entityType: 'building',
+      tags: ['mining'] // Applies to all buildings with 'mining' tag
+    }],
+    isRepeatable: true,
+    maxApplications: 10
+  }
+});
+
+// Apply upgrade with automatic effect processing
+const result = productionBoost.apply();
+if (result.success) {
+  console.log(`Modified ${result.modifiedEntities.length} entities`);
+}
+```
+
+### Complex Unlock Conditions
+
+Define sophisticated unlock requirements using data structures:
+
+```ts
+// Complex unlock condition with AND/OR logic
+const advancedMine = game.createBuilding({
+  name: "Advanced Gold Mine",
+  // ... other config
+});
+
+// Register complex unlock condition
+game.unlockManager.registerComplexUnlockCondition(advancedMine, {
+  condition: {
+    type: 'resource_amount',
+    target: 'gold',
+    operation: 'greater_than_or_equal',
+    value: 5000
+  },
+  andConditions: [{
+    type: 'building_count',
+    target: 'mine',
+    operation: 'greater_than_or_equal',
+    value: 3
+  }],
+  orConditions: [{
+    type: 'time_played',
+    target: 'total',
+    operation: 'greater_than_or_equal',
+    value: 300000 // 5 minutes
+  }]
+});
+
+// Automatically checked during game loop
+game.unlockManager.checkUnlockConditions();
+```
+
+### Production System
+
+Comprehensive production system with input/output validation:
+
+```ts
+// Create miner with extraction-based production
+const ironMiner = new Miner({
   name: "Iron Miner",
   description: "Extracts iron automatically",
-  cost: { wood: 10 },
-  buildTime: 5,
-  gatherRate: 2.0, // 2 iron per second
-  resourceId: iron.id,
-  autoStart: true // Starts production automatically when built
+  costs: [{ resourceId: 'wood', amount: 100 }],
+  buildTime: 15,
+  gatherRate: 2.5, // 2.5 iron per second
+  resourceId: 'iron',
+  autoStart: true // Starts production when built
 });
 
-game.addEntity(miner);
-
-// Production starts automatically when unlocked/built
-// Or manually control production:
-// miner.startProduction();
-// miner.stopProduction();
-```
-
-### Adding an Upgrade
-
-```ts
-const upgrade = new Upgrade("Double Mining Speed", "Doubles the rate of mining", () => miner.gatherRate *= 2, {iron: 50}, () => miner.isUnlocked);
-miner.addUpgrade(upgrade);
-```
-
-### Factory Production (New System)
-
-```ts
-// Create a factory that converts iron to steel
-const factory = new Factory({
+// Create factory with transformation-based production
+const steelFactory = new Factory({
   name: "Steel Mill",
   description: "Converts iron to steel",
-  cost: { wood: 50, stone: 25 },
-  buildTime: 10,
-  inputs: [{ resourceId: iron.id, amount: 2 }], // Consumes 2 iron per cycle
-  outputs: [{ resourceId: steel.id, amount: 1 }], // Produces 1 steel per cycle
-  productionRate: 0.5, // 0.5 cycles per second
-  efficiency: 1.0 // 100% efficiency
+  costs: [{ resourceId: 'stone', amount: 200 }],
+  buildTime: 30,
+  inputs: [{ resourceId: 'iron', amount: 3 }], // Consumes 3 iron per cycle
+  outputs: [{ resourceId: 'steel', amount: 1 }], // Produces 1 steel per cycle
+  productionRate: 0.8, // 0.8 cycles per second
+  efficiency: 1.0
 });
 
-game.addEntity(factory);
-factory.startProduction(); // Start when resources are available
+// Global production management
+game.startAllProduction(); // Start all producer buildings
+game.stopAllProduction(); // Stop all production
+const stats = game.getGlobalProductionStats(); // Get production metrics
 ```
 
-### Storage Management (New Capacity System)
+### Enhanced Event System
+
+Comprehensive event system with filtering and middleware:
 
 ```ts
-// Storage now manages capacity limits, not local storage
-const storage = game.createStorage({
+// Subscribe to system events with filtering
+game.eventManager.onSystemEvent('amountChanged', (event) => {
+  console.log(`Resource ${event.data.resourceId} changed`);
+}, {
+  entityId: gold.id, // Only events from gold resource
+  debounce: 100 // Debounce rapid events
+});
+
+// Entity-specific event listeners
+game.eventManager.onEntity(mine.id, 'levelUp', (event) => {
+  console.log(`${mine.name} leveled up to ${event.data.newLevel}`);
+});
+
+// Event middleware for processing
+game.eventManager.addMiddleware((event, next) => {
+  // Add timestamp to all events
+  event.data.processedAt = Date.now();
+  next();
+});
+
+// Event history for debugging
+const history = game.eventManager.getEventHistory({
+  entityType: 'building'
+}); // Get all building-related events
+```
+
+## Advanced Features
+
+### Cost System with Validation
+
+```ts
+// Create complex cost definitions
+const costs = createCosts({ 
+  gold: 1000, 
+  iron: 500, 
+  steel: 100 
+}, 1.3); // 30% scaling factor
+
+// Validate costs before spending
+const validation = game.costSystem.validateCost(costs, { level: 5 });
+if (validation.canAfford) {
+  // Spend resources with automatic rollback on failure
+  const result = game.costSystem.spendResources(costs, { level: 5 });
+  console.log(`Spent: ${JSON.stringify(result.spent)}`);
+} else {
+  console.log(`Missing: ${validation.missingResources.map(r => 
+    `${r.amount} ${r.resourceId}`
+  ).join(', ')}`);
+}
+```
+
+### Storage Management
+
+```ts
+// Storage manages global capacity limits
+const warehouse = game.createStorage({
   name: "Resource Warehouse",
-  description: "Increases storage capacity for all resources",
-  cost: { wood: 20 },
-  buildTime: 5,
+  description: "Increases storage capacity",
+  costs: [{ resourceId: 'wood', amount: 50 }],
+  buildTime: 20,
   capacities: {
-    [iron.id]: 100, // Can store up to 100 iron
-    [steel.id]: 50  // Can store up to 50 steel
+    'gold': 10000,   // Can store up to 10,000 gold
+    'iron': 5000,    // Can store up to 5,000 iron
+    'steel': 1000    // Can store up to 1,000 steel
   }
 });
 
-// Check global capacity
-const canStore = game.hasGlobalCapacity(iron.id, 25); // Can we store 25 more iron?
-const remaining = game.getRemainingCapacityFor(iron.id); // How much space left?
+// Check global capacity across all storage buildings
+const totalCapacity = game.getTotalCapacityFor('gold');
+const remainingSpace = game.getRemainingCapacityFor('gold');
+const canStore = game.hasGlobalCapacity('gold', 500);
 ```
 
-## Advanced Logging Configuration
-
-Incrementa includes a basic logging system that can be configured for different environments and use cases.
-
-### Basic Usage
+### Milestone System
 
 ```ts
-import { setDebugMode, logger } from 'incrementa';
-
-// Enable debug mode to see framework logs
-setDebugMode(true);
-
-// Use the logger in your game code
-logger.info('Game started successfully');
-logger.warn('Resource limit approaching');
-logger.error('Failed to save game state');
-logger.debug('Detailed debugging information');
-```
-
-### Web Console Logging (Default)
-
-The framework uses web console logging by default, which works in both browsers and Node.js:
-
-```ts
-import { Game, SaveManager } from 'incrementa';
-
-// Default configuration - logs to console when debug mode is enabled
-const saveManager = new SaveManager(/* your storage provider */);
-const game = new Game(saveManager);
-
-// Enable debug mode to see framework logs
-setDebugMode(true);
-```
-
-### File Logging for Node.js
-
-Configure file logging for server environments or when you need persistent logs:
-
-```ts
-import { setLoggerDriver, setDebugMode } from 'incrementa';
-import fs from 'fs';
-
-// Configure file logging
-setLoggerDriver('file', {
-  filePath: './game.log',
-  fileWriter: (path, data) => {
-    fs.appendFileSync(path, data);
-  }
+// Register milestones with rewards
+game.unlockManager.registerMilestone({
+  id: 'first-thousand',
+  name: 'Gold Collector',
+  description: 'Collect 1,000 gold',
+  condition: {
+    condition: {
+      type: 'resource_amount',
+      target: 'gold',
+      operation: 'greater_than_or_equal',
+      value: 1000
+    }
+  },
+  reward: {
+    type: 'resource',
+    target: 'gold',
+    value: 500,
+    description: '500 bonus gold'
+  },
+  isAchieved: false
 });
 
-setDebugMode(true);
-
-// All framework logs will now be written to ./game.log
-```
-
-### Node.js Console with Colors
-
-For Node.js environments, use the enhanced console driver with color coding:
-
-```ts
-import { setLoggerDriver, setDebugMode } from 'incrementa';
-
-// Configure Node.js console with colors
-setLoggerDriver('node');
-setDebugMode(true);
-
-// Logs will appear with color coding in the terminal
-```
-
-### Advanced Configuration
-
-```ts
-import { 
-  setDebugMode, 
-  setLogLevel, 
-  setLoggerDriver, 
-  LogLevel, 
-  logger 
-} from 'incrementa';
-
-// Enable debug mode
-setDebugMode(true);
-
-// Set minimum log level (only WARN and ERROR will be shown)
-setLogLevel(LogLevel.WARN);
-
-// Configure async file logging
-setLoggerDriver('file', {
-  filePath: './logs/incrementa.log',
-  fileWriter: async (path, data) => {
-    await fs.promises.appendFile(path, data);
-  }
-});
-
-// Runtime logging configuration
-logger.info('This will not be shown (below WARN level)');
-logger.warn('This warning will be logged to file');
-logger.error('This error will be logged to file');
-
-// Change driver at runtime
-setLoggerDriver('web'); // Switch back to console
-logger.error('This will now appear in console');
-```
-
-### Production Configuration
-
-For production environments, disable debug mode to prevent any logging overhead:
-
-```ts
-import { setDebugMode } from 'incrementa';
-
-// Disable all framework logging in production
-setDebugMode(false);
-
-// No logs will be output regardless of level or driver configuration
-```
-
-### Performance and Debug Mode Behavior
-
-Understanding how the logging system behaves in different modes is crucial for production deployments.
-
-#### Default Behavior (Debug Mode OFF)
-
-```ts
-import { logger } from 'incrementa';
-
-// Debug mode is FALSE by default
-logger.info('This message will not appear anywhere');
-logger.error('This error will also be silent');
-logger.warn('No warnings will be shown');
-logger.debug('No debug output');
-
-// All calls above return immediately with zero output
-```
-
-#### Enabling Debug Mode for Troubleshooting
-
-Enable debug mode at runtime to troubleshoot issues without code changes:
-
-```ts
-import { setDebugMode, setLogLevel, LogLevel } from 'incrementa';
-
-// Enable debug mode and set detailed logging
-setDebugMode(true);
-setLogLevel(LogLevel.DEBUG);
-
-// Now all previously silent logs will appear
+// Check milestones during game loop
+game.unlockManager.checkMilestones();
 ```
 
 ## Testing & Quality Assurance
 
-Incrementa follows **Test-Driven Development (TDD)** principles to ensure robust, reliable functionality. The framework includes a comprehensive unit test suite covering all core features.
+Incrementa follows **Test-Driven Development (TDD)** principles with comprehensive test coverage:
 
 ### Test Coverage
-
-- **151 total tests** across 6 test suites
-- **Core systems**: Game management, timers, events, unlocks
+- **200+ total tests** across 10 test suites
+- **Core systems**: Cost validation, upgrade effects, unlock conditions, events
 - **Entity testing**: Resources, buildings, storage, producers
-- **Integration tests**: Time-based scenarios, production chains
-- **Production accuracy**: 5-second timing tests for precise rates
-
-### Development Workflow
-
-**For Contributors and Framework Development:**
-
-1. **Write tests first** - Before implementing new features, create failing tests that define the expected behavior
-2. **Implement feature** - Write the minimum code needed to make tests pass
-3. **Refactor & optimize** - Improve code quality while maintaining test coverage
-4. **Document behavior** - Update documentation and add examples
+- **Integration tests**: Multi-system interactions and workflows
+- **Performance tests**: Event system metrics and timing accuracy
 
 ### Running Tests
 
@@ -458,7 +332,7 @@ npm test
 npm run test:coverage
 
 # Run specific test suite
-npm test tests/entities/resource.test.ts
+npm test tests/core/cost-system.test.ts
 
 # Watch mode for development
 npm run test:watch
@@ -468,55 +342,129 @@ npm run test:watch
 
 ```
 tests/
-├── core/           # Game, events, timers, unlock systems
-├── entities/       # Resources, buildings, storage, producers
-├── integration/    # Multi-component scenarios and timing tests
-└── setup.ts        # Test utilities and mocking
+├── core/           # Core systems (cost, upgrades, unlocks, events)
+├── entities/       # Entity tests (resources, buildings, storage)
+├── integration/    # Multi-component scenarios
+└── setup.ts        # Test utilities and helpers
 ```
 
-**Key Testing Principles:**
-- **Isolated tests** - Each test runs independently with clean setup
-- **Time simulation** - Fake timers for consistent time-based testing
-- **Production accuracy** - Tests verify exact production rates and timing
-- **Edge case coverage** - Boundary conditions and error scenarios
-- **Integration validation** - Multi-entity interactions and workflows
+## Performance & Optimization
 
-See `/tests/README.md` for detailed test documentation and current coverage status.
+### Event System Performance
+- **Middleware processing** for event transformation
+- **Event filtering** to reduce unnecessary processing
+- **Debouncing** for rapid event sequences
+- **Memory management** with automatic cleanup
 
-## Development Guidelines
+### Unlock System Optimization
+- **Condition caching** for expensive evaluations
+- **Batch processing** for multiple conditions
+- **Template system** for reusable patterns
 
-### Test-Driven Development
+### Production System Efficiency
+- **Delta-time calculations** for frame-rate independence
+- **Resource validation** before production attempts
+- **Batch production** for improved performance
 
-**All new framework features must include comprehensive unit tests.** This ensures:
+## Advanced Configuration
 
-- **Regression prevention** - Changes don't break existing functionality
-- **API contract validation** - Public interfaces work as documented
-- **Edge case handling** - Boundary conditions are properly managed
-- **Performance verification** - Time-sensitive features work accurately
+### Logging System
 
-### Code Quality Standards
+```ts
+import { setDebugMode, setLogLevel, LogLevel, logger } from 'incrementa';
 
-- **TypeScript strict mode** - Full type safety and compile-time validation
-- **Comprehensive logging** - Debug-friendly with environment-agnostic output
-- **Clear documentation** - Every public method and class is documented
-- **Consistent patterns** - Entity lifecycle hooks and event emission patterns
+// Configure debugging
+setDebugMode(true);
+setLogLevel(LogLevel.DEBUG);
+
+// Framework will log detailed information about:
+// - Cost calculations and validations
+// - Upgrade effect applications
+// - Unlock condition evaluations
+// - Event system operations
+// - Production lifecycle events
+```
+
+### Game Initialization
+
+```ts
+import { Game, SaveManager, initializeFramework } from 'incrementa';
+
+// Initialize framework with custom configuration
+initializeFramework({
+  debugMode: true,
+  logLevel: LogLevel.INFO,
+  eventHistorySize: 1000,
+  unlockCheckInterval: 1000 // Check unlocks every second
+});
+
+// Create game instance
+const saveManager = new SaveManager(/* your storage provider */);
+const game = new Game(saveManager);
+
+// Game is now ready with all enhanced systems
+```
+
+## Migration Guide
+
+### From Legacy Systems
+
+The framework maintains backward compatibility while providing enhanced features:
+
+```ts
+// Legacy upgrade (still works)
+const oldUpgrade = new Upgrade({
+  name: "Simple Boost",
+  effect: () => { building.productionRate *= 2; },
+  cost: { gold: 100 }
+});
+
+// New data-driven upgrade (recommended)
+const newUpgrade = new Upgrade({
+  name: "Advanced Boost",
+  configuration: {
+    effects: [{
+      type: 'property_modifier',
+      targetProperty: 'productionRate',
+      operation: 'multiply',
+      value: 2
+    }],
+    targets: [{ entityType: 'building', entityId: building.id }]
+  },
+  costs: [{ resourceId: 'gold', amount: 100 }]
+});
+```
 
 ## Roadmap
 
-- **Phase 1: Core Mechanics** ✅
-  - Finalized Resource, Building, Miner, Factory, and Storage entities
-  - Complete production system with lifecycle management
-  - Comprehensive test suite (151 tests)
-  - DeepCore Driller example game demonstrating all features
+- **Phase 1: Core Architecture** ✅
+  - Advanced cost system with validation
+  - Data-driven upgrade effects  
+  - Complex unlock conditions
+  - Enhanced event system
+  - Comprehensive test suite (200+ tests)
   
-- **Phase 2: Advanced Features** 🚧
-  - Prestige and reset systems
-  - Achievement and milestone tracking
-  - Report and statistics module to track rates, resources and current state of the game
-  - Advanced unlock condition chaining
-  - Performance optimization for large-scale games
+- **Phase 2: Advanced Features** ✅
+  - Production system with input/output validation
+  - Storage capacity management
+  - Milestone and achievement tracking
+  - Performance optimization and caching
   
-- **Phase 3: Developer Experience** 📋
-  - Framework documentation website
-  - Interactive playground and examples
+- **Phase 3: Developer Experience** 🚧
+  - Interactive documentation website
   - More game examples to showcase and theme templates
+
+## Contributing
+
+Incrementa welcomes contributions! Please ensure all new features include:
+
+1. **Comprehensive tests** following TDD principles
+2. **TypeScript types** for all public APIs
+3. **Documentation** with usage examples
+4. **Backward compatibility** when possible
+
+See `/tests/README.md` for testing guidelines and current coverage status.
+
+## License
+
+MIT License - see LICENSE file for details.

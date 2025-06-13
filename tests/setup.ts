@@ -78,32 +78,73 @@ export const createUnlockedEntity = <T extends BaseEntity>(
   if ('setGameReference' in entity) {
     (entity as any).setGameReference(game);
   }
-  game.addEntity(entity);
+  
+  // Add entity using proper methods based on type
+  if (entity instanceof Resource) {
+    // Resource should already be added via createResource factory method
+  } else if (entity instanceof Building) {
+    // Building should already be added via createBuilding factory method  
+  } else if (entity instanceof Upgrade) {
+    // Upgrade should already be added via createUpgrade factory method
+  } else {
+    // For other entity types, try to find the appropriate method
+    console.warn(`Unknown entity type for ${entity.constructor.name}, skipping addition`);
+  }
   
   // Use proper unlock mechanism instead of direct property access
-  game.unlockEntity(entity.id);
+  if (game.unlockManager && typeof game.unlockManager.unlockEntity === 'function') {
+    game.unlockManager.unlockEntity(entity.id);
+  } else {
+    entity.isUnlocked = true;
+  }
   
   return entity;
 };
 
-export const createUnlockedResource = (game: Game, config: any): Resource => {
-  return createUnlockedEntity(game, Resource, config);
+export const createUnlockedResource = (config: any): Resource => {
+  const resource = new Resource(config);
+  resource.isUnlocked = true;
+  return resource;
 };
 
-export const createUnlockedBuilding = (game: Game, config: any): Building => {
-  return createUnlockedEntity(game, Building, config);
+export const createUnlockedBuilding = (config: any): Building => {
+  // Ensure name is provided for ID generation
+  if (!config.name) {
+    config.name = 'Test Building';
+  }
+  const building = new Building(config);
+  building.isUnlocked = true;
+  return building;
 };
 
-export const createUnlockedStorage = (game: Game, config: any): Storage => {
-  return createUnlockedEntity(game, Storage, config);
+export const createUnlockedStorage = (config: any): Storage => {
+  // Ensure name is provided for ID generation
+  if (!config.name) {
+    config.name = 'Test Storage';
+  }
+  const storage = new Storage(config);
+  storage.isUnlocked = true;
+  return storage;
 };
 
-export const createUnlockedMiner = (game: Game, config: any): Miner => {
-  return createUnlockedEntity(game, Miner, config);
+export const createUnlockedMiner = (config: any): Miner => {
+  // Ensure name is provided for ID generation
+  if (!config.name) {
+    config.name = 'Test Miner';
+  }
+  const miner = new Miner(config);
+  miner.isUnlocked = true;
+  return miner;
 };
 
-export const createUnlockedFactory = (game: Game, config: any): Factory => {
-  return createUnlockedEntity(game, Factory, config);
+export const createUnlockedFactory = (config: any): Factory => {
+  // Ensure name is provided for ID generation
+  if (!config.name) {
+    config.name = 'Test Factory';
+  }
+  const factory = new Factory(config);
+  factory.isUnlocked = true;
+  return factory;
 };
 
 // Helper for creating realistic unlock conditions
@@ -123,21 +164,23 @@ export const waitUntilBuilt = async (building: Building, maxWaitMs: number = 100
   return building.isBuilt;
 };
 
-// Helper for setting up a complete game scenario with resources and storage
-export const setupGameWithBasicResources = (game: Game) => {
-  const ore = createUnlockedResource(game, {
+// Helper for setting up a complete game scenario with resources and storage  
+export const setupGameWithBasicResources = (saveManager: any) => {
+  const game = new Game(saveManager);
+  
+  const ore = game.createResource({
     id: 'ore',
     name: 'Ore',
     initialAmount: TEST_CONSTANTS.STARTING_RESOURCES.ore
   });
   
-  const metal = createUnlockedResource(game, {
-    id: 'metal',
+  const metal = game.createResource({
+    id: 'metal', 
     name: 'Metal',
     initialAmount: TEST_CONSTANTS.STARTING_RESOURCES.metal
   });
   
-  return { ore, metal };
+  return { game, ore, metal };
 };
 
 // Reset all mocks between tests

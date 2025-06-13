@@ -6,6 +6,7 @@ import { Timer } from "./timer";
 import { UnlockManager } from "./unlock-manager";
 import { EventManager, EventStats } from "./event-manager";
 import { CostSystem } from "./cost-system";
+import { UpgradeEffectProcessor } from "./upgrade-effect-processor";
 import { logger } from "../utils/logger";
 import type { CostDefinition } from "../types/cost-definition";
 /**
@@ -51,6 +52,9 @@ export class Game {
     /** Cost validation and resource spending system */
     public costSystem: CostSystem;
 
+    /** Upgrade effect processing and application system */
+    public upgradeEffectProcessor: UpgradeEffectProcessor;
+
     private saveManager: SaveManager;
 
     /**
@@ -69,9 +73,10 @@ export class Game {
         this.gameSpeed = 1.0;
         
         // Initialize managers
-        this.unlockManager = new UnlockManager();
+        this.unlockManager = new UnlockManager(this);
         this.eventManager = new EventManager();
         this.costSystem = new CostSystem(this);
+        this.upgradeEffectProcessor = new UpgradeEffectProcessor(this);
         
         // Initialize main game timer
         this.gameTimer = new Timer({
@@ -351,6 +356,7 @@ export class Game {
         tags?: string[];
     }): Upgrade {
         const upgrade = new Upgrade(config);
+        upgrade.setGame(this);
         this.addEntity(upgrade);
         return upgrade;
     }

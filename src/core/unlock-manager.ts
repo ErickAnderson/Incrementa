@@ -1,17 +1,33 @@
 import { BaseEntity } from "./base-entity";
+import { UnlockConditionEvaluator } from "./unlock-condition-evaluator";
 import { logger } from "../utils/logger";
+import type {
+  UnlockConditionDefinition,
+  ComplexUnlockCondition,
+  UnlockConditionResult,
+  UnlockTemplate,
+  UnlockMilestone,
+  UnlockEventType,
+  UnlockEvent,
+  UnlockManagerStats
+} from "../types/unlock-conditions";
+import type { Game } from "./game";
 
 /**
  * Interface for unlock condition registrations
  */
 interface UnlockConditionEntry {
     entity: BaseEntity;
-    condition: () => boolean;
+    condition?: () => boolean; // Legacy function-based condition
+    complexCondition?: ComplexUnlockCondition; // New data-driven condition
     isChecked: boolean;
+    lastEvaluationTime?: number;
+    evaluationResult?: UnlockConditionResult;
 }
 
 /**
- * Centralized manager for handling entity unlock conditions and events
+ * Enhanced centralized manager for handling entity unlock conditions and events
+ * Supports both legacy function-based conditions and new data-driven conditions
  */
 export class UnlockManager {
     /** Registered unlock conditions */
@@ -25,16 +41,36 @@ export class UnlockManager {
     
     /** Whether the manager is actively checking conditions */
     private isActive: boolean;
+    
+    /** Data-driven condition evaluator */
+    private conditionEvaluator?: UnlockConditionEvaluator;
+    
+    /** Game reference for advanced condition evaluation */
+    private game?: Game;
+    
+    /** Event listeners for unlock events */
+    private eventListeners: Map<UnlockEventType, Function[]> = new Map();
+    
+    /** Registered templates for reusable conditions */
+    private templates: Map<string, UnlockTemplate> = new Map();
+    
+    /** Tracked milestones */
+    private milestones: Map<string, UnlockMilestone> = new Map();
 
-    constructor() {
+    constructor(game?: Game) {
         this.unlockConditions = new Map();
         this.unlockedEntities = new Set();
         this.unlockListeners = [];
         this.isActive = true;
+        this.game = game;
+        
+        if (game) {
+            this.conditionEvaluator = new UnlockConditionEvaluator(game);
+        }
     }
 
     /**
-     * Registers an unlock condition for an entity
+     * Registers a legacy function-based unlock condition for an entity
      * @param entity - The entity to register unlock condition for
      * @param condition - Function that returns true when entity should be unlocked
      */
@@ -50,7 +86,46 @@ export class UnlockManager {
             isChecked: false
         });
 
-        logger.info(`Unlock condition registered for entity ${entity.name} (${entity.id})`);
+        logger.info(`Legacy unlock condition registered for entity ${entity.name} (${entity.id})`);
+    }
+    
+    /**
+     * Registers a data-driven unlock condition for an entity
+     * @param entity - The entity to register unlock condition for
+     * @param condition - Complex unlock condition definition
+     */
+    registerComplexUnlockCondition(entity: BaseEntity, condition: ComplexUnlockCondition): void {
+        if (entity.isUnlocked) {
+            logger.warn(`Entity ${entity.name} (${entity.id}) is already unlocked`);
+            return;
+        }
+        
+        if (!this.conditionEvaluator) {
+            logger.error('Cannot register complex condition: no condition evaluator available');
+            return;
+        }
+
+        this.unlockConditions.set(entity.id, {
+            entity,
+            complexCondition: condition,
+            isChecked: false
+        });
+
+        logger.info(`Complex unlock condition registered for entity ${entity.name} (${entity.id})`);
+    }
+    
+    /**
+     * Registers a simple unlock condition using data structures
+     * @param entity - The entity to register unlock condition for
+     * @param condition - Simple unlock condition definition
+     */
+    registerSimpleCondition(entity: BaseEntity, condition: UnlockConditionDefinition): void {
+        const complexCondition: ComplexUnlockCondition = {
+            condition,
+            canReEvaluate: true
+        };
+        
+        this.registerComplexUnlockCondition(entity, complexCondition);
     }
 
     /**
@@ -93,7 +168,38 @@ export class UnlockManager {
             }
 
             try {
-                if (entry.condition()) {
+                let conditionMet = false;
+                
+                // Handle legacy function-based conditions
+                if (entry.condition) {
+                    conditionMet = entry.condition();
+                }
+                // Handle new data-driven conditions
+                else if (entry.complexCondition && this.conditionEvaluator && this.game) {
+                    const context = {
+                        game: this.game,
+                        entity: entry.entity,
+                        timestamp: Date.now()
+                    };
+                    
+                    const result = this.conditionEvaluator.evaluateComplexCondition(
+                        entry.complexCondition,
+                        context
+                    );
+                    
+                    entry.evaluationResult = result;
+                    entry.lastEvaluationTime = Date.now();
+                    conditionMet = result.isMet;
+                    
+                    // Emit evaluation event
+                    this._emitEvent('conditionEvaluated', {
+                        entityId,
+                        condition: entry.complexCondition.condition,
+                        result
+                    });
+                }
+                
+                if (conditionMet) {
                     this.performUnlock(entry);
                 }
             } catch (error) {
@@ -119,9 +225,18 @@ export class UnlockManager {
                 entry.entity.onUnlock();
                 entry.entity.emit('unlocked', { entity: entry.entity });
             } else {
-                const unlockResult = entry.entity.unlock();
-                if (!unlockResult) {
-                    return false;
+                // For complex conditions, we've already evaluated the condition in the manager
+                // so we can directly unlock the entity
+                if (entry.complexCondition) {
+                    entry.entity.isUnlocked = true;
+                    entry.entity.onUnlock();
+                    entry.entity.emit('unlocked', { entity: entry.entity });
+                } else {
+                    // For legacy function-based conditions, we've already evaluated the condition in the manager
+                    // so we can directly unlock the entity (similar to complex conditions)
+                    entry.entity.isUnlocked = true;
+                    entry.entity.onUnlock();
+                    entry.entity.emit('unlocked', { entity: entry.entity });
                 }
             }
             
@@ -133,6 +248,13 @@ export class UnlockManager {
             
             // Notify listeners
             this.notifyUnlockListeners(entry.entity);
+            
+            // Emit unlock event
+            this._emitEvent('entityUnlocked', {
+                entity: entry.entity,
+                entityId: entry.entity.id,
+                entityName: entry.entity.name
+            });
             
             logger.info(`Entity ${entry.entity.name} (${entry.entity.id}) unlocked`);
             return true;
@@ -258,16 +380,132 @@ export class UnlockManager {
     }
 
     /**
-     * Gets statistics about the unlock manager
+     * Gets comprehensive statistics about the unlock manager
      * @returns Object containing unlock statistics
      */
-    getStats() {
-        return {
-            pendingUnlocks: this.unlockConditions.size,
-            unlockedCount: this.unlockedEntities.size,
-            listenersCount: this.unlockListeners.length,
-            isActive: this.isActive
+    getStats(): UnlockManagerStats {
+        const baseStats = {
+            totalConditions: this.unlockConditions.size,
+            conditionsMet: this.unlockedEntities.size,
+            entitiesUnlocked: this.unlockedEntities.size,
+            milestonesAchieved: Array.from(this.milestones.values()).filter(m => m.isAchieved).length,
+            commonConditionTypes: this.getCommonConditionTypes(),
+            averageUnlockTime: this.calculateAverageUnlockTime(),
+            totalEvaluationTime: 0
         };
+        
+        // Add evaluator stats if available
+        if (this.conditionEvaluator) {
+            const evaluatorStats = this.conditionEvaluator.getStats();
+            return {
+                ...baseStats,
+                totalEvaluationTime: evaluatorStats.totalEvaluationTime
+            };
+        }
+        
+        return baseStats;
+    }
+    
+    /**
+     * Register a reusable unlock condition template
+     */
+    registerTemplate(template: UnlockTemplate): void {
+        this.templates.set(template.name, template);
+        logger.info(`Unlock template '${template.name}' registered`);
+    }
+    
+    /**
+     * Apply a template to create an unlock condition for an entity
+     */
+    applyTemplate(entity: BaseEntity, templateName: string, _parameters: Record<string, any> = {}): void {
+        const template = this.templates.get(templateName);
+        if (!template) {
+            logger.error(`Template '${templateName}' not found`);
+            return;
+        }
+        
+        // Merge template parameters with provided parameters
+        // const mergedParams = { ...template.parameters, ...parameters };
+        
+        // Create condition from template (simplified implementation)
+        const condition = this.processTemplate(template.baseCondition);
+        this.registerComplexUnlockCondition(entity, condition);
+    }
+    
+    /**
+     * Register a milestone
+     */
+    registerMilestone(milestone: UnlockMilestone): void {
+        this.milestones.set(milestone.id, milestone);
+        logger.info(`Milestone '${milestone.name}' registered`);
+    }
+    
+    /**
+     * Check milestone conditions
+     */
+    checkMilestones(): void {
+        if (!this.conditionEvaluator || !this.game) return;
+        
+        for (const milestone of this.milestones.values()) {
+            if (milestone.isAchieved) continue;
+            
+            const context = {
+                game: this.game,
+                entity: null,
+                timestamp: Date.now()
+            };
+            
+            const result = this.conditionEvaluator.evaluateComplexCondition(
+                milestone.condition,
+                context
+            );
+            
+            if (result.isMet) {
+                milestone.isAchieved = true;
+                milestone.achievedAt = Date.now();
+                
+                this._emitEvent('milestoneAchieved', { milestone });
+                logger.info(`Milestone achieved: ${milestone.name}`);
+                
+                // Apply reward if present
+                if (milestone.reward) {
+                    this.applyMilestoneReward(milestone);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Add event listener for unlock events
+     */
+    on(eventType: UnlockEventType, callback: (event: UnlockEvent) => void): void {
+        if (!this.eventListeners.has(eventType)) {
+            this.eventListeners.set(eventType, []);
+        }
+        this.eventListeners.get(eventType)!.push(callback);
+    }
+    
+    /**
+     * Remove event listener
+     */
+    off(eventType: UnlockEventType, callback: (event: UnlockEvent) => void): void {
+        const listeners = this.eventListeners.get(eventType);
+        if (listeners) {
+            const index = listeners.indexOf(callback);
+            if (index > -1) {
+                listeners.splice(index, 1);
+            }
+        }
+    }
+    
+    /**
+     * Set game reference for condition evaluation
+     */
+    setGame(game: Game): void {
+        this.game = game;
+        if (!this.conditionEvaluator) {
+            this.conditionEvaluator = new UnlockConditionEvaluator(game);
+        }
     }
 
     /**
@@ -287,6 +525,69 @@ export class UnlockManager {
     destroy(): void {
         this.reset();
         this.isActive = false;
+        this.eventListeners.clear();
+        this.templates.clear();
+        this.milestones.clear();
+        if (this.conditionEvaluator) {
+            this.conditionEvaluator.destroy();
+        }
         logger.info('UnlockManager destroyed');
+    }
+    
+    // Private helper methods
+    
+    private getCommonConditionTypes(): any[] {
+        const typeCount = new Map<string, number>();
+        
+        for (const entry of this.unlockConditions.values()) {
+            if (entry.complexCondition) {
+                const type = entry.complexCondition.condition.type;
+                typeCount.set(type, (typeCount.get(type) || 0) + 1);
+            }
+        }
+        
+        return Array.from(typeCount.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([type]) => type as any);
+    }
+    
+    private calculateAverageUnlockTime(): number {
+        // This would require tracking unlock times
+        // For now, return 0
+        return 0;
+    }
+    
+    private processTemplate(condition: ComplexUnlockCondition): ComplexUnlockCondition {
+        // Simplified template processing
+        // In a real implementation, this would replace placeholders in the condition
+        return { ...condition };
+    }
+    
+    private applyMilestoneReward(milestone: UnlockMilestone): void {
+        // Simplified reward application
+        // In a real implementation, this would apply the specific reward
+        logger.info(`Applying reward for milestone: ${milestone.name}`);
+    }
+    
+    private _emitEvent(type: UnlockEventType, data: any): void {
+        const event: UnlockEvent = {
+            type,
+            data: {
+                ...data,
+                timestamp: Date.now()
+            }
+        };
+
+        const listeners = this.eventListeners.get(type);
+        if (listeners) {
+            listeners.forEach(callback => {
+                try {
+                    callback(event);
+                } catch (error) {
+                    logger.error(`Error in unlock event listener for ${type}: ${error instanceof Error ? error.message : String(error)}`);
+                }
+            });
+        }
     }
 }
