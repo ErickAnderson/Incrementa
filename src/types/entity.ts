@@ -20,13 +20,13 @@ export interface EntityConfig {
 
 /** Event data emitted when an entity is unlocked */
 export interface EntityUnlockedEvent {
-    entity: any;
+    entity: Record<string, unknown>;
 }
 
 /** Event data emitted when a tag is added or removed */
 export interface EntityTagEvent {
     tag: string;
-    entity: any;
+    entity: Record<string, unknown>;
 }
 
 /** Standard entity events */
@@ -37,4 +37,4 @@ export type EntityEvent =
     | 'stateChanged';
 
 /** Generic event listener function type */
-export type EventListener<T = any> = (data?: T) => void;
+export type EventListener<T = Record<string, unknown>> = (data?: T) => void;

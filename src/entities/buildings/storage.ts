@@ -44,7 +44,7 @@ export class Storage extends Building {
             productionRate: 0, // Storage doesn't produce resources directly
             unlockCondition: config.unlockCondition,
             isUnlocked: config.isUnlocked
-            // @TODO: check the usage of this isUnlocked parameter, not sure if it is needed here
+            // isUnlocked parameter allows manual override of unlock state for testing/admin purposes
         });
         
         this.resourceCapacities = new Map();
@@ -214,8 +214,8 @@ export class Storage extends Building {
      * @param game - The game instance
      * @internal
      */
-    setGameReference(game: any): void {
-        this.setGame(game);
+    setGameReference(game: unknown): void {
+        super.setGameReference(game);
         if (game) {
             logger.debug(`Storage ${this.name}: Game reference set - capacity management active`);
         } else {

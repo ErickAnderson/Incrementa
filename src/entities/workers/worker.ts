@@ -2,6 +2,7 @@ import { BaseEntity } from "../../core/base-entity";
 import {Resource} from "../resources/resource";
 import {Factory} from "../buildings/factory";
 import { logger } from "../../utils/logger";
+import { ENTITY_CONSTANTS } from "../../utils/constants";
 
 /**
  * Represents a worker that gathers resources over time.
@@ -55,7 +56,7 @@ export class Worker extends BaseEntity {
             tags: config.tags
         });
         this.gatheringRate = config.gatheringRate || 1;
-        this.interval = config.interval || 1000;
+        this.interval = config.interval || ENTITY_CONSTANTS.DEFAULT_WORKER_INTERVAL;
         this.status = "idle";
         this.timerId = null;
     }
@@ -76,9 +77,9 @@ export class Worker extends BaseEntity {
         if (this.status === "gathering") return; // Already gathering
         this.status = "gathering";
 
-        this.timerId = (globalThis as any).setInterval(() => {
+        this.timerId = ((globalThis as { setInterval: (callback: () => void, interval: number) => number }).setInterval(() => {
             this.gather(resource);
-        }, this.interval);
+        }, this.interval) as unknown) as number;
     }
 
     /**
@@ -86,7 +87,7 @@ export class Worker extends BaseEntity {
      */
     stopGathering() {
         if (this.timerId) {
-            (globalThis as any).clearInterval(this.timerId);
+            (globalThis as { clearInterval: (timerId: number) => void }).clearInterval(this.timerId);
             this.timerId = null;
             this.status = "idle";
         }
@@ -111,8 +112,9 @@ export class Worker extends BaseEntity {
         // For example, if the building has a resource output rate
         if (this.isUnlocked) {
             logger.info(`${this.name} is working on ${building.name}.`);
-            // this.startGathering(building.outputResource); // Assuming building has an outputResource property
-            // @TODO Implement logic for gathering resources from the building
+            // TODO: Future enhancement - implement building-specific resource gathering
+            // This would require buildings to expose their output resources and rates
+            // For now, workers are designed for direct resource gathering via startGathering()
         }
     }
 

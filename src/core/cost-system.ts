@@ -21,7 +21,7 @@ import { logger } from '../utils/logger';
 export class CostSystem {
   private game: Game;
   private stats: CostSystemStats;
-  private listeners: Map<CostEventType, Function[]> = new Map();
+  private listeners: Map<CostEventType, Array<(event: CostEvent) => void>> = new Map();
 
   constructor(game: Game) {
     this.game = game;
@@ -238,7 +238,7 @@ export class CostSystem {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, []);
     }
-    this.listeners.get(eventType)!.push(callback);
+    this.listeners.get(eventType)!.push(callback as (event: CostEvent) => void);
   }
 
   /**
@@ -264,7 +264,7 @@ export class CostSystem {
 
   // Private methods
 
-  private _emitEvent(type: CostEventType, data: any): void {
+  private _emitEvent(type: CostEventType, data: Record<string, unknown>): void {
     const event: CostEvent = {
       type,
       data: {

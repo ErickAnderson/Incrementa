@@ -1,4 +1,4 @@
-import { BaseEntity } from "./base-entity";
+import { BaseEntity, IGame } from "./base-entity";
 import { logger } from "../utils/logger";
 import type { 
   CostDefinition, 
@@ -32,10 +32,9 @@ export class Upgrade extends BaseEntity implements CostProvider {
     isRepeatable: boolean;
     maxApplications: number;
     currentApplications: number;
-    private _game?: Game;
     
     // Legacy support
-    effect?: any;
+    effect?: Record<string, unknown>;
     cost?: Record<string, number>;
 
     /**
@@ -59,7 +58,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         configuration?: UpgradeConfiguration;
         costs?: CostDefinition[];
         cost?: Record<string, number>; // Legacy support
-        effect?: any; // Legacy support
+        effect?: Record<string, unknown>; // Legacy support
         isRepeatable?: boolean;
         maxApplications?: number;
         unlockCondition?: () => boolean;
@@ -208,7 +207,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         
         // Check prerequisites if defined
         if (this.configuration.prerequisites && this._game?.upgradeEffectProcessor) {
-            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this as any);
+            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this as unknown);
         }
         
         return true;
@@ -336,17 +335,17 @@ export class Upgrade extends BaseEntity implements CostProvider {
     }
     
     /**
-     * Sets the game reference for system integration
+     * Sets the game reference (GameAware interface implementation)
      */
-    setGame(game: Game): void {
-        this._game = game;
+    setGameReference(game: IGame): void {
+        super.setGameReference(game);
     }
     
     /**
-     * Sets the game reference (alias for consistency)
+     * Sets the game reference (alias for setGameReference for backward compatibility)
      */
-    setGameReference(game: Game): void {
-        this.setGame(game);
+    setGame(game: Game): void {
+        this.setGameReference(game);
     }
     
     /**

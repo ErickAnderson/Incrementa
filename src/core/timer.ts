@@ -311,17 +311,17 @@ export class Timer {
      * @private
      */
     private scheduleRepeatingTimer(callback: () => void, interval: number): number {
-        if (typeof (globalThis as any).setInterval === 'function') {
-            return (globalThis as any).setInterval(callback, interval);
+        if (typeof (globalThis as unknown as { setInterval?: typeof setInterval }).setInterval === 'function') {
+            return (globalThis as unknown as { setInterval: typeof setInterval }).setInterval(callback, interval);
         } else {
             const recursiveTimer = () => {
                 callback();
-                if (this.isRunning && !this.isPaused && typeof (globalThis as any).setTimeout === 'function') {
-                    (globalThis as any).setTimeout(recursiveTimer, interval);
+                if (this.isRunning && !this.isPaused && typeof (globalThis as unknown as { setTimeout?: typeof setTimeout }).setTimeout === 'function') {
+                    (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout(recursiveTimer, interval);
                 }
             };
-            if (typeof (globalThis as any).setTimeout === 'function') {
-                (globalThis as any).setTimeout(recursiveTimer, interval);
+            if (typeof (globalThis as unknown as { setTimeout?: typeof setTimeout }).setTimeout === 'function') {
+                (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout(recursiveTimer, interval);
             }
             return 1; // Return dummy ID
         }
@@ -332,8 +332,8 @@ export class Timer {
      * @private
      */
     private clearRepeatingTimer(timerId: number): void {
-        if (typeof (globalThis as any).clearInterval === 'function') {
-            (globalThis as any).clearInterval(timerId);
+        if (typeof (globalThis as unknown as { clearInterval?: typeof clearInterval }).clearInterval === 'function') {
+            (globalThis as unknown as { clearInterval: typeof clearInterval }).clearInterval(timerId);
         }
     }
 }

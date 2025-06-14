@@ -49,7 +49,7 @@ export class UnlockManager {
     private game?: Game;
     
     /** Event listeners for unlock events */
-    private eventListeners: Map<UnlockEventType, Function[]> = new Map();
+    private eventListeners: Map<UnlockEventType, Array<(event: UnlockEvent) => void>> = new Map();
     
     /** Registered templates for reusable conditions */
     private templates: Map<string, UnlockTemplate> = new Map();
@@ -417,7 +417,7 @@ export class UnlockManager {
     /**
      * Apply a template to create an unlock condition for an entity
      */
-    applyTemplate(entity: BaseEntity, templateName: string, _parameters: Record<string, any> = {}): void {
+    applyTemplate(entity: BaseEntity, templateName: string, _parameters: Record<string, unknown> = {}): void {
         const template = this.templates.get(templateName);
         if (!template) {
             logger.error(`Template '${templateName}' not found`);
@@ -536,7 +536,7 @@ export class UnlockManager {
     
     // Private helper methods
     
-    private getCommonConditionTypes(): any[] {
+    private getCommonConditionTypes(): string[] {
         const typeCount = new Map<string, number>();
         
         for (const entry of this.unlockConditions.values()) {
@@ -549,7 +549,7 @@ export class UnlockManager {
         return Array.from(typeCount.entries())
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
-            .map(([type]) => type as any);
+            .map(([type]) => type);
     }
     
     private calculateAverageUnlockTime(): number {
@@ -570,7 +570,7 @@ export class UnlockManager {
         logger.info(`Applying reward for milestone: ${milestone.name}`);
     }
     
-    private _emitEvent(type: UnlockEventType, data: any): void {
+    private _emitEvent(type: UnlockEventType, data: Record<string, unknown>): void {
         const event: UnlockEvent = {
             type,
             data: {

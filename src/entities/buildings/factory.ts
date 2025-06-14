@@ -130,7 +130,7 @@ export class Factory extends ProducerBuilding {
 
         return this.productionConfig.inputs.map(input => {
             const resource = this.game!.getEntityById(input.resourceId);
-            const available = resource && 'amount' in resource ? (resource as any).amount : 0;
+            const available = resource && 'amount' in resource ? (resource as { amount: number }).amount : 0;
             
             return {
                 resourceId: input.resourceId,

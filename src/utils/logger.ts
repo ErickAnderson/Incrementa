@@ -26,11 +26,11 @@ export interface LoggerDriver {
  */
 export class WebConsoleDriver implements LoggerDriver {
     write(level: LogLevel, message: string, timestamp: string): void {
-        if (typeof (globalThis as any).console?.log !== 'function') {
+        if (typeof (globalThis as unknown as { console?: Console }).console?.log !== 'function') {
             return; // Silent fallback if console unavailable
         }
 
-        const console = (globalThis as any).console;
+        const console = (globalThis as unknown as { console: Console }).console;
         const logMessage = `[${timestamp}] ${message}`;
 
         switch (level) {
@@ -113,14 +113,14 @@ export class FileDriver implements LoggerDriver {
 
         try {
             this.config.fileWriter(this.config.filePath, logsToWrite);
-        } catch (error) {
+        } catch {
             // Silent fallback - don't create recursive logging errors
         }
     }
 
     private scheduleTimer(callback: () => void, delay: number): number {
-        if (typeof (globalThis as any).setTimeout === 'function') {
-            return (globalThis as any).setTimeout(callback, delay);
+        if (typeof (globalThis as unknown as { setTimeout?: typeof setTimeout }).setTimeout === 'function') {
+            return (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout(callback, delay);
         } else {
             callback();
             return 0;
@@ -128,8 +128,8 @@ export class FileDriver implements LoggerDriver {
     }
 
     private clearTimer(timerId: number): void {
-        if (typeof (globalThis as any).clearTimeout === 'function') {
-            (globalThis as any).clearTimeout(timerId);
+        if (typeof (globalThis as unknown as { clearTimeout?: typeof clearTimeout }).clearTimeout === 'function') {
+            (globalThis as unknown as { clearTimeout: typeof clearTimeout }).clearTimeout(timerId);
         }
     }
 }
@@ -139,13 +139,13 @@ export class FileDriver implements LoggerDriver {
  */
 export class NodeConsoleDriver implements LoggerDriver {
     write(level: LogLevel, message: string, timestamp: string): void {
-        if (typeof (globalThis as any).process?.stdout?.write !== 'function') {
+        if (typeof (globalThis as unknown as { process?: { stdout?: { write?: (data: string) => boolean } } }).process?.stdout?.write !== 'function') {
             // Fallback to regular console if process.stdout unavailable
             new WebConsoleDriver().write(level, message, timestamp);
             return;
         }
 
-        const stdout = (globalThis as any).process.stdout;
+        const stdout = (globalThis as unknown as { process: { stdout: { write: (data: string) => boolean; isTTY?: boolean } } }).process.stdout;
         const levelName = LogLevel[level].padEnd(5);
         const logMessage = `[${timestamp}] [${levelName}] ${message}\n`;
 
@@ -153,7 +153,7 @@ export class NodeConsoleDriver implements LoggerDriver {
         let colorCode = '';
         let resetCode = '';
         
-        if ((globalThis as any).process?.stdout?.isTTY) {
+        if ((globalThis as unknown as { process?: { stdout?: { isTTY?: boolean } } }).process?.stdout?.isTTY) {
             resetCode = '\x1b[0m';
             switch (level) {
                 case LogLevel.DEBUG:

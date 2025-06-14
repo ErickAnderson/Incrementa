@@ -22,7 +22,7 @@ import { logger } from '../utils/logger';
 export class UpgradeEffectProcessor {
   private game: Game;
   private stats: UpgradeStats;
-  private listeners: Map<UpgradeEventType, Function[]> = new Map();
+  private listeners: Map<UpgradeEventType, Array<(event: UpgradeEvent) => void>> = new Map();
 
   constructor(game: Game) {
     this.game = game;
@@ -147,7 +147,7 @@ export class UpgradeEffectProcessor {
   /**
    * Calculate new value based on operation and current value
    */
-  private calculateNewValue(currentValue: any, operation: UpgradeOperation, value: number): any {
+  private calculateNewValue(currentValue: unknown, operation: UpgradeOperation, value: number): unknown {
     if (typeof currentValue !== 'number') {
       throw new Error(`Cannot perform ${operation} on non-numeric value: ${currentValue}`);
     }
@@ -178,7 +178,7 @@ export class UpgradeEffectProcessor {
   /**
    * Get property value from entity using dot notation
    */
-  private getPropertyValue(entity: any, propertyPath: string): any {
+  private getPropertyValue(entity: Record<string, unknown>, propertyPath: string): unknown {
     const parts = propertyPath.split('.');
     let current = entity;
     
@@ -195,7 +195,7 @@ export class UpgradeEffectProcessor {
   /**
    * Set property value on entity using dot notation
    */
-  private setPropertyValue(entity: any, propertyPath: string, value: any): void {
+  private setPropertyValue(entity: Record<string, unknown>, propertyPath: string, value: unknown): void {
     const parts = propertyPath.split('.');
     const lastPart = parts.pop()!;
     let current = entity;
@@ -297,16 +297,17 @@ export class UpgradeEffectProcessor {
    * Check a single condition
    */
   private checkSingleCondition(condition: UpgradeCondition, entity: BaseEntity): boolean {
-    let actualValue: any;
+    let actualValue: unknown;
 
     switch (condition.type) {
       case 'entity_level':
-        actualValue = (entity as any).level || 1;
+        actualValue = (entity as unknown as { level?: number }).level || 1;
         break;
-      case 'resource_amount':
+      case 'resource_amount': {
         const resource = this.game.getResourceById(condition.target);
         actualValue = resource?.amount || 0;
         break;
+      }
       case 'building_count':
         actualValue = this.game.getCurrentBuildings().filter(b => 
           b.name.toLowerCase().includes(condition.target.toLowerCase())
@@ -314,7 +315,7 @@ export class UpgradeEffectProcessor {
         break;
       case 'upgrade_applied':
         // Check if specific upgrade is applied to this entity
-        actualValue = (entity as any).upgradesApplied?.some((u: any) => 
+        actualValue = (entity as unknown as { upgradesApplied?: Array<{ name: string }> }).upgradesApplied?.some((u) => 
           u.name === condition.target
         ) || false;
         break;
@@ -328,7 +329,7 @@ export class UpgradeEffectProcessor {
   /**
    * Compare values based on operation
    */
-  private compareValues(actual: any, operation: ConditionOperation, expected: any): boolean {
+  private compareValues(actual: unknown, operation: ConditionOperation, expected: unknown): boolean {
     switch (operation) {
       case 'equals':
         return actual === expected;
@@ -404,7 +405,7 @@ export class UpgradeEffectProcessor {
 
   // Private helper methods
 
-  private _emitEvent(type: UpgradeEventType, data: any): void {
+  private _emitEvent(type: UpgradeEventType, data: Record<string, unknown>): void {
     const event: UpgradeEvent = {
       type,
       data: {

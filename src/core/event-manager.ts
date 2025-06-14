@@ -33,10 +33,10 @@ export interface EventStats {
  */
 export class EventManager {
     /** Global event listeners with subscription options */
-    private globalListeners: Map<string, Array<{callback: Function; options?: EventSubscriptionOptions}>>;
+    private globalListeners: Map<string, Array<{callback: (...args: unknown[]) => void; options?: EventSubscriptionOptions}>>;
     
     /** Entity-specific event listeners */
-    private entityListeners: Map<string, Map<string, Array<{callback: Function; options?: EventSubscriptionOptions}>>>;
+    private entityListeners: Map<string, Map<string, Array<{callback: (...args: unknown[]) => void; options?: EventSubscriptionOptions}>>>;
     
     /** Registered entities for event routing */
     private registeredEntities: Map<string, BaseEntity>;
@@ -61,7 +61,7 @@ export class EventManager {
     
     /** Event batching system */
     private eventBatches: Map<string, SystemEvent[]>;
-    private batchTimers: Map<string, any>;
+    private batchTimers: Map<string, NodeJS.Timeout>;
     // private batchDelay: number = 10; // ms - Currently unused
     
     /** Event replay system for debugging */
@@ -72,7 +72,7 @@ export class EventManager {
     private errorHandlers: Array<(error: EventError) => void>;
     
     /** Debounce tracking */
-    private debounceTimers: Map<string, any>;
+    private debounceTimers: Map<string, NodeJS.Timeout>;
 
     constructor(debugMode: boolean = false) {
         this.globalListeners = new Map();
@@ -130,10 +130,10 @@ export class EventManager {
      * @param data - Event data
      * @param options - Emission options
      */
-    emitSystemEvent(eventType: SystemEventType, data: any, options: EventEmissionOptions = {}): void {
+    emitSystemEvent(eventType: SystemEventType, data: unknown, options: EventEmissionOptions = {}): void {
         if (!this.isActive) return;
 
-        const startTime = performance.now();
+        const startTime = (globalThis as { performance?: { now?: () => number } }).performance?.now?.() || Date.now();
         
         try {
             const event: SystemEvent = {
@@ -165,7 +165,7 @@ export class EventManager {
             });
             
             this.stats.eventsEmitted++;
-            this.stats.totalEmissionTime += performance.now() - startTime;
+            this.stats.totalEmissionTime += ((globalThis as { performance?: { now?: () => number } }).performance?.now?.() || Date.now()) - startTime;
             
             if (this.debugMode) {
                 logger.info(`System event '${eventType}' emitted`);
@@ -185,7 +185,7 @@ export class EventManager {
      * @param eventName - Name of the event to emit
      * @param data - Optional data to pass with the event
      */
-    emit(eventName: string, data?: any): void {
+    emit(eventName: string, data?: unknown): void {
         this.emitSystemEvent(eventName as SystemEventType, data);
     }
 
@@ -195,7 +195,7 @@ export class EventManager {
      * @param eventName - Name of the event to emit
      * @param data - Optional data to pass with the event
      */
-    emitFromEntity(entityId: string, eventName: string, data?: any): void {
+    emitFromEntity(entityId: string, eventName: string, data?: unknown): void {
         if (!this.isActive) return;
 
         try {
@@ -274,7 +274,7 @@ export class EventManager {
      * @param eventName - Name of the event to listen for
      * @param callback - Function to call when event is emitted
      */
-    on(eventName: string, callback: Function): void {
+    on(eventName: string, callback: (...args: unknown[]) => void): void {
         this.onSystemEvent(eventName as SystemEventType, callback as SystemEventListener);
     }
 
@@ -284,7 +284,7 @@ export class EventManager {
      * @param eventName - Name of the event to listen for
      * @param callback - Function to call when event is emitted
      */
-    onEntity(entityId: string, eventName: string, callback: Function, options?: EventSubscriptionOptions): void {
+    onEntity(entityId: string, eventName: string, callback: (...args: unknown[]) => void, options?: EventSubscriptionOptions): void {
         if (typeof callback !== 'function') {
             throw new Error('Event callback must be a function');
         }
@@ -312,7 +312,7 @@ export class EventManager {
      * @param callback - The callback function to remove
      * @returns Whether the listener was successfully removed
      */
-    off(eventName: string, callback: Function): boolean {
+    off(eventName: string, callback: (...args: unknown[]) => void): boolean {
         const listeners = this.globalListeners.get(eventName);
         if (!listeners) return false;
         
@@ -341,7 +341,7 @@ export class EventManager {
      * @param callback - The callback function to remove
      * @returns Whether the listener was successfully removed
      */
-    offEntity(entityId: string, eventName: string, callback: Function): boolean {
+    offEntity(entityId: string, eventName: string, callback: (...args: unknown[]) => void): boolean {
         const entityEventListeners = this.entityListeners.get(entityId);
         if (!entityEventListeners) return false;
         
@@ -378,7 +378,7 @@ export class EventManager {
         
         // Override entity's emit method to route through EventManager
         const originalEmit = entity.emit.bind(entity);
-        entity.emit = (eventName: string, data?: any) => {
+        entity.emit = (eventName: string, data?: unknown) => {
             // Call original entity emit for local listeners
             originalEmit(eventName, data);
             
@@ -567,14 +567,14 @@ export class EventManager {
         
         // Clear all timers
         for (const timer of this.batchTimers.values()) {
-            if (typeof timer === 'number' && typeof clearTimeout === 'function') {
+            if (timer && typeof clearTimeout === 'function') {
                 clearTimeout(timer);
             }
         }
         this.batchTimers.clear();
         
         for (const timer of this.debounceTimers.values()) {
-            if (typeof timer === 'number' && typeof clearTimeout === 'function') {
+            if (timer && typeof clearTimeout === 'function') {
                 clearTimeout(timer);
             }
         }
@@ -702,7 +702,7 @@ export class EventManager {
         return true;
     }
     
-    private handleDebounce(event: SystemEvent, callback: Function, options: EventSubscriptionOptions): void {
+    private handleDebounce(event: SystemEvent, callback: (...args: unknown[]) => void, options: EventSubscriptionOptions): void {
         const debounceKey = `${event.type}:${event.data.entityId || 'global'}:${callback.toString()}`;
         
         // Clear existing timer

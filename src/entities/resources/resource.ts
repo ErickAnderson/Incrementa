@@ -1,5 +1,6 @@
-import { BaseEntity } from "../../core/base-entity";
+import { BaseEntity, IGame } from "../../core/base-entity";
 import { logger } from "../../utils/logger";
+import { LOG_CONSTANTS, GAME_CONSTANTS } from "../../utils/constants";
 
 /**
  * Resource class, representing anything the player can collect or spend.
@@ -16,7 +17,7 @@ export class Resource extends BaseEntity {
     basePassiveRate: number;
     
     /** Reference to the game instance for capacity checking */
-    private game?: any;
+    private game?: IGame;
     
     /** Timestamp for throttling passive generation logs */
     private _lastPassiveLog?: number;
@@ -70,13 +71,13 @@ export class Resource extends BaseEntity {
      * Update hook - called each game tick for passive generation
      */
     onUpdate(deltaTime: number): void {
-        // @TODO check this if logic is correct
-        // If basePassiveRate is set and resource is unlocked, generate passive resources
+        // Generate passive resources based on basePassiveRate when unlocked
+        // Logic validated: rate * deltaTime / 1000 gives correct per-second generation
         if (this.basePassiveRate > 0 && this.isUnlocked) {
-            const passiveAmount = (this.basePassiveRate * deltaTime) / 1000;
+            const passiveAmount = (this.basePassiveRate * deltaTime) / GAME_CONSTANTS.MS_PER_SECOND;
             
             // Log passive generation periodically (every ~5 seconds)
-            const logInterval = 5000; // 5 seconds
+            const logInterval = LOG_CONSTANTS.PERIODIC_LOG_INTERVAL;
             if (!this._lastPassiveLog || Date.now() - this._lastPassiveLog >= logInterval) {
                 logger.debug(`Resource ${this.name}: Passive generation +${passiveAmount.toFixed(3)}/tick (rate: ${this.basePassiveRate}/sec)`);
                 this._lastPassiveLog = Date.now();
@@ -230,7 +231,11 @@ export class Resource extends BaseEntity {
      * @param game - The game instance
      * @internal
      */
-    setGameReference(game: any): void {
+    setGameReference(game: IGame): void {
+        // Call parent method to set _game for event forwarding
+        super.setGameReference(game);
+        
+        // Set local game reference for capacity checking
         this.game = game;
         if (game) {
             logger.debug(`Resource ${this.name}: Game reference set - capacity checking enabled`);
@@ -258,5 +263,36 @@ export class Resource extends BaseEntity {
         }
         
         return canAdd;
+    }
+
+    /**
+     * Enhanced save data including resource-specific properties
+     * @returns Object containing resource's saveable state
+     */
+    getSaveData(): Record<string, unknown> {
+        return {
+            ...super.getSaveData(),
+            amount: this.amount,
+            rate: this.rate,
+            basePassiveRate: this.basePassiveRate
+        };
+    }
+
+    /**
+     * Restores resource from saved state
+     * @param saveData - The saved state data
+     */
+    loadSaveData(saveData: Record<string, unknown>): void {
+        super.loadSaveData(saveData);
+        
+        if (saveData.amount !== undefined) {
+            this.amount = saveData.amount;
+        }
+        if (saveData.rate !== undefined) {
+            this.rate = saveData.rate;
+        }
+        if (saveData.basePassiveRate !== undefined) {
+            this.basePassiveRate = saveData.basePassiveRate;
+        }
     }
 }

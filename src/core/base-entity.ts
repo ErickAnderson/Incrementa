@@ -1,10 +1,11 @@
 import { logger } from "../utils/logger";
+import { GameAware, IGame } from "./game-aware";
 
 /**
  * Base abstract class for all game entities, providing shared properties and methods.
  * Implements PRD specification for BaseEntity with event emitters and lifecycle hooks.
  */
-export abstract class BaseEntity {
+export abstract class BaseEntity implements GameAware {
     /** Unique identifier for the entity - user-defined or auto-generated */
     readonly id: string;
     
@@ -24,7 +25,10 @@ export abstract class BaseEntity {
     protected unlockCondition?: () => boolean;
     
     /** Event listener registry for this entity */
-    private eventListeners: Map<string, Array<Function>> = new Map();
+    private eventListeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
+    
+    /** Reference to the game instance for global event forwarding */
+    protected _game?: IGame;
 
     /**
      * Creates a new BaseEntity instance
@@ -70,7 +74,7 @@ export abstract class BaseEntity {
      * @param eventName - The name of the event to listen for
      * @param callback - The callback function to execute when event is emitted
      */
-    on(eventName: string, callback: Function): void {
+    on(eventName: string, callback: (...args: unknown[]) => void): void {
         if (!this.eventListeners.has(eventName)) {
             this.eventListeners.set(eventName, []);
         }
@@ -82,7 +86,7 @@ export abstract class BaseEntity {
      * @param eventName - The name of the event
      * @param callback - The specific callback to remove
      */
-    off(eventName: string, callback: Function): void {
+    off(eventName: string, callback: (...args: unknown[]) => void): void {
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             const index = listeners.indexOf(callback);
@@ -93,11 +97,12 @@ export abstract class BaseEntity {
     }
 
     /**
-     * Emits an event to all registered listeners
+     * Emits an event to all registered listeners and forwards to global event manager
      * @param eventName - The name of the event to emit
      * @param data - Optional data to pass to event listeners
      */
-    emit(eventName: string, data?: any): void {
+    emit(eventName: string, data?: unknown): void {
+        // Emit to local listeners
         const listeners = this.eventListeners.get(eventName);
         if (listeners) {
             listeners.forEach(callback => {
@@ -108,6 +113,30 @@ export abstract class BaseEntity {
                 }
             });
         }
+        
+        // Forward important events to global event manager if available
+        if (this._game && this._game.eventManager && this.shouldForwardEvent(eventName)) {
+            try {
+                this._game.eventManager.emitFromEntity(this.id, eventName, data);
+            } catch (error) {
+                logger.warn(`Failed to forward ${eventName} event to global manager: ${error}`);
+            }
+        }
+    }
+    
+    /**
+     * Determines which events should be forwarded to the global event manager
+     * @param eventName - The name of the event
+     * @returns Whether this event should be forwarded globally
+     */
+    protected shouldForwardEvent(eventName: string): boolean {
+        // Forward important lifecycle and state change events
+        const forwardedEvents = [
+            'buildComplete', 'levelUp', 'unlocked', 'capacityChanged',
+            'productionStarted', 'productionStopped', 'resourceChanged',
+            'amountChanged'
+        ];
+        return forwardedEvents.includes(eventName);
     }
 
     /**
@@ -224,16 +253,86 @@ export abstract class BaseEntity {
 
     /**
      * Returns a plain object representation of the entity for serialization
+     * Override in subclasses to include entity-specific data
      * @returns Serializable object representation
      */
-    toJSON(): any {
+    toJSON(): Record<string, unknown> {
         return {
             id: this.id,
             name: this.name,
             description: this.description,
             isUnlocked: this.isUnlocked,
-            tags: this.tags
+            tags: this.tags,
+            entityType: this.constructor.name
         };
+    }
+
+    /**
+     * Restores entity state from serialized data
+     * Override in subclasses to restore entity-specific data
+     * @param data - The serialized data to restore from
+     */
+    fromJSON(data: Record<string, unknown>): void {
+        if (data.isUnlocked !== undefined) {
+            this.isUnlocked = data.isUnlocked;
+        }
+        if (data.tags !== undefined) {
+            this.tags = data.tags;
+        }
+        // Note: id, name, description are typically set during construction
+    }
+
+    /**
+     * Gets the serializable state of the entity
+     * This method can be overridden to provide custom serialization logic
+     * @returns Object containing the entity's saveable state
+     */
+    getSaveData(): Record<string, unknown> {
+        return this.toJSON();
+    }
+
+    /**
+     * Restores the entity from saved state
+     * This method can be overridden to provide custom deserialization logic
+     * @param saveData - The saved state data
+     */
+    loadSaveData(saveData: Record<string, unknown>): void {
+        this.fromJSON(saveData);
+    }
+    
+    // GameAware interface implementation
+    
+    /**
+     * Sets the game reference for this entity
+     * @param game - The game instance
+     */
+    setGameReference(game: IGame): void {
+        this._game = game;
+    }
+    
+    /**
+     * Gets the game reference for this entity
+     * @returns The game instance or undefined
+     */
+    getGameReference(): IGame | undefined {
+        return this._game;
+    }
+
+    /**
+     * Destroys the entity by cleaning up event listeners.
+     */
+    destroy(): void {
+        try {
+            // Clear all event listeners
+            this.eventListeners.clear();
+            
+            // Remove game reference
+            this._game = undefined;
+            
+            logger.debug(`Entity ${this.id} destroyed successfully`);
+        } catch (error) {
+            logger.error(`Entity ${this.id}: Failed to destroy: ${error}`);
+        }
     }
 
 }

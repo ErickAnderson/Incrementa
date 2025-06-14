@@ -36,6 +36,12 @@ describe('Building Entity', () => {
       productionRate: TEST_CONSTANTS.PRODUCTION_RATES.normal,
       level: 1
     });
+    
+    // Set game reference for building to access resources and cost validation
+    building.setGameReference(game);
+    
+    // Register building with game
+    game.entityRegistry.registerEntity(building, game);
   });
 
   describe('Basic Properties', () => {

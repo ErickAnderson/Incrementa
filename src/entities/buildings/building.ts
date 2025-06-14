@@ -1,4 +1,4 @@
-import { BaseEntity } from "../../core/base-entity";
+import { BaseEntity, IGame } from "../../core/base-entity";
 import { Upgrade } from "../../core/upgrade";
 import { logger } from "../../utils/logger";
 import type { CostDefinition, CostCalculationOptions, CostValidationResult, CostProvider } from "../../types/cost-definition";
@@ -24,7 +24,6 @@ export class Building extends BaseEntity implements CostProvider {
     level: number;
     isBuilding: boolean;
     upgradesApplied: Upgrade[];
-    private _game?: Game;
     private constructionTimerId: number | null;
     private _constructionCompleted: boolean;
 
@@ -85,8 +84,8 @@ export class Building extends BaseEntity implements CostProvider {
         this.isBuilding = false;
         this.upgradesApplied = [];
         this.constructionTimerId = null;
-        // @TODO Review the usage of this property, not sure if it is needed
-        // Indicates whether construction has completed ?? but what about the building function returning this instead?
+        // Property to track construction completion state for internal lifecycle management
+        // This is needed to differentiate between "never built" and "construction completed" states
         this._constructionCompleted = false;
     }
 
@@ -342,17 +341,17 @@ export class Building extends BaseEntity implements CostProvider {
     }
 
     /**
-     * Sets the game reference for cost system integration
+     * Sets the game reference (GameAware interface implementation)
      */
-    setGame(game: Game): void {
-        this._game = game;
+    setGameReference(game: IGame): void {
+        super.setGameReference(game);
     }
 
     /**
-     * Sets the game reference (alias for setGame for consistency)
+     * Sets the game reference (alias for setGameReference for backward compatibility)
      */
-    setGameReference(game: Game): void {
-        this.setGame(game);
+    setGame(game: Game): void {
+        this.setGameReference(game);
     }
 
     /**
@@ -385,8 +384,8 @@ export class Building extends BaseEntity implements CostProvider {
      * @private
      */
     private scheduleTimer(callback: () => void, delay: number): number {
-        if (typeof (globalThis as any).setTimeout === 'function') {
-            return (globalThis as any).setTimeout(callback, delay);
+        if (typeof (globalThis as { setTimeout?: (callback: () => void, delay: number) => number }).setTimeout === 'function') {
+            return ((globalThis as { setTimeout: (callback: () => void, delay: number) => number }).setTimeout(callback, delay) as unknown) as number;
         } else {
             // Fallback for environments without setTimeout
             callback();
@@ -399,8 +398,8 @@ export class Building extends BaseEntity implements CostProvider {
      * @private
      */
     private clearTimer(timerId: number): void {
-        if (typeof (globalThis as any).clearTimeout === 'function') {
-            (globalThis as any).clearTimeout(timerId);
+        if (typeof (globalThis as { clearTimeout?: (timerId: number) => void }).clearTimeout === 'function') {
+            (globalThis as { clearTimeout: (timerId: number) => void }).clearTimeout(timerId);
         }
     }
 

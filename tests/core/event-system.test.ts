@@ -145,7 +145,8 @@ describe('Enhanced Event System', () => {
       
       game.eventManager.onSystemEvent('amountChanged', handler, options);
       
-      // Event with amount > 100\n      game.eventManager.emitSystemEvent('amountChanged', { amount: 150 });
+      // Event with amount > 100
+      game.eventManager.emitSystemEvent('amountChanged', { amount: 150 });
       expect(handler).toHaveBeenCalledTimes(1);
       
       // Event with amount <= 100
@@ -200,6 +201,9 @@ describe('Enhanced Event System', () => {
 
   describe('Event History and Debugging', () => {
     test('should track event history', () => {
+      // Clear event history from setup
+      game.eventManager.clearEventHistory();
+      
       game.eventManager.emitSystemEvent('testEvent1', { data: 'first' });
       game.eventManager.emitSystemEvent('testEvent2', { data: 'second' });
       
@@ -211,8 +215,14 @@ describe('Enhanced Event System', () => {
     });
 
     test('should filter event history', () => {
+      // Clear event history from setup
+      game.eventManager.clearEventHistory();
+      
       const resource = createUnlockedResource({ name: 'Gold' });
-      game.addEntity(resource);
+      game.entityRegistry.registerEntity(resource, game);
+      
+      // Clear history again after entity registration
+      game.eventManager.clearEventHistory();
       
       game.eventManager.emitSystemEvent('amountChanged', { entityId: resource.id });
       game.eventManager.emitSystemEvent('testEvent', { entityId: 'other' });
@@ -226,6 +236,9 @@ describe('Enhanced Event System', () => {
     });
 
     test('should clear event history', () => {
+      // Clear event history from setup
+      game.eventManager.clearEventHistory();
+      
       game.eventManager.emitSystemEvent('testEvent', {});
       
       expect(game.eventManager.getEventHistory()).toHaveLength(1);
@@ -281,11 +294,14 @@ describe('Enhanced Event System', () => {
       
       const resource = createUnlockedResource({ name: 'Gold' });
       
+      // Properly register the entity with the game
+      resource.setGameReference(game);
+      game.entityRegistry.registerEntity(resource, game);
+      
       game.eventManager.onSystemEvent('amountChanged', globalHandler);
       game.eventManager.onEntity(resource.id, 'amountChanged', entityHandler);
-      game.eventManager.routeEntityEvents(resource);
       
-      // Emit through entity (should route to global manager)
+      // Emit through entity (should route to global manager via GameAware interface)
       resource.emit('amountChanged', { amount: 100 });
       
       expect(globalHandler).toHaveBeenCalled();

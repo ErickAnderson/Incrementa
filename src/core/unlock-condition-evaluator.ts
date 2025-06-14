@@ -25,7 +25,7 @@ export class UnlockConditionEvaluator {
   private stats: UnlockManagerStats;
   private templates: Map<string, UnlockTemplate> = new Map();
   private milestones: Map<string, UnlockMilestone> = new Map();
-  private listeners: Map<UnlockEventType, Function[]> = new Map();
+  private listeners: Map<UnlockEventType, Array<(event: UnlockEvent) => void>> = new Map();
   private evaluationCache: Map<string, { result: UnlockConditionResult; timestamp: number }> = new Map();
   private cacheTimeout: number = 1000; // 1 second cache timeout
 
@@ -49,7 +49,7 @@ export class UnlockConditionEvaluator {
     condition: ComplexUnlockCondition,
     context: UnlockEvaluationContext
   ): UnlockConditionResult {
-    const startTime = performance.now();
+    const startTime = (globalThis as { performance?: { now?: () => number } }).performance?.now?.() || Date.now();
     
     try {
       // Check prerequisites first
@@ -159,7 +159,7 @@ export class UnlockConditionEvaluator {
       };
 
       // Update stats
-      this.stats.totalEvaluationTime += performance.now() - startTime;
+      this.stats.totalEvaluationTime += ((globalThis as { performance?: { now?: () => number } }).performance?.now?.() || Date.now()) - startTime;
       this.stats.totalConditions++;
       if (isMet) {
         this.stats.conditionsMet++;
@@ -240,7 +240,7 @@ export class UnlockConditionEvaluator {
   /**
    * Get the actual value for a condition based on its type
    */
-  private getActualValue(condition: UnlockConditionDefinition, context: UnlockEvaluationContext): any {
+  private getActualValue(condition: UnlockConditionDefinition, context: UnlockEvaluationContext): unknown {
     switch (condition.type) {
       case 'resource_amount': {
         const resource = this.game.getResourceById(condition.target);
@@ -261,17 +261,17 @@ export class UnlockConditionEvaluator {
 
       case 'building_level': {
         const building = this.game.getEntityById(condition.target);
-        return (building as any)?.level || 0;
+        return (building as unknown as { level?: number })?.level || 0;
       }
 
       case 'upgrade_purchased': {
         const upgrade = this.game.getEntityById(condition.target);
-        return (upgrade as any)?.isApplied || false;
+        return (upgrade as unknown as { isApplied?: boolean })?.isApplied || false;
       }
 
       case 'time_played': {
         // This would need to be tracked by the game
-        return context.timestamp - (this.game as any).startTime || 0;
+        return context.timestamp - (this.game as unknown as { startTime?: number }).startTime || 0;
       }
 
       case 'entities_unlocked': {
@@ -317,7 +317,7 @@ export class UnlockConditionEvaluator {
   /**
    * Perform comparison based on operation
    */
-  private performComparison(actual: any, operation: UnlockOperation, expected: any): boolean {
+  private performComparison(actual: unknown, operation: UnlockOperation, expected: unknown): boolean {
     switch (operation) {
       case 'equals':
         return actual === expected;
@@ -361,7 +361,7 @@ export class UnlockConditionEvaluator {
   /**
    * Calculate progress towards meeting a condition
    */
-  private calculateProgress(actual: any, expected: any, operation: UnlockOperation): number {
+  private calculateProgress(actual: unknown, expected: unknown, operation: UnlockOperation): number {
     if (typeof actual !== 'number' || typeof expected !== 'number') {
       return 0;
     }
@@ -407,8 +407,8 @@ export class UnlockConditionEvaluator {
    */
   private generateDescription(
     condition: UnlockConditionDefinition, 
-    actual: any, 
-    expected: any, 
+    actual: unknown, 
+    expected: unknown, 
     isMet: boolean
   ): string {
     const status = isMet ? '✓' : '✗';
@@ -462,8 +462,11 @@ export class UnlockConditionEvaluator {
   /**
    * Get nested property from object
    */
-  private getNestedProperty(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
+  private getNestedProperty(obj: Record<string, unknown>, path: string): unknown {
+    return path.split('.').reduce((current: unknown, key: string) => 
+      current && typeof current === 'object' && key in (current as Record<string, unknown>) 
+        ? (current as Record<string, unknown>)[key] 
+        : undefined, obj);
   }
 
   /**
@@ -535,7 +538,7 @@ export class UnlockConditionEvaluator {
 
   // Private helper methods
 
-  private _emitEvent(type: UnlockEventType, data: any): void {
+  private _emitEvent(type: UnlockEventType, data: Record<string, unknown>): void {
     const event: UnlockEvent = {
       type,
       data: {

@@ -6,7 +6,7 @@ interface EventsConfig {
     name: string;
     description: string;
     callbackEvents?: Array<() => void>;
-    unlockCondition: any;
+    unlockCondition: (() => boolean) | undefined;
 }
 
 /**

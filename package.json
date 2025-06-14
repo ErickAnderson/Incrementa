@@ -47,12 +47,17 @@
     "watch": "vite build --watch",
     "build": "vite build && tsc",
     "preview": "vite preview",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/parser": "^8.34.0",
+    "eslint": "^9.29.0",
     "jest": "^30.0.0",
     "jest-environment-node": "^30.0.0",
     "ts-jest": "^29.4.0",

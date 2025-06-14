@@ -110,10 +110,10 @@ export interface ConditionEvaluation {
   isMet: boolean;
   
   /** The actual value that was evaluated */
-  actualValue: any;
+  actualValue: unknown;
   
   /** The expected/target value */
-  expectedValue: any;
+  expectedValue: unknown;
   
   /** Human-readable description of the evaluation */
   description: string;
@@ -133,7 +133,7 @@ export interface UnlockTemplate {
   baseCondition: ComplexUnlockCondition;
   
   /** Parameters that can be customized */
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   
   /** Tags for categorizing templates */
   tags?: string[];
@@ -170,7 +170,7 @@ export interface UnlockReward {
   target: string;
   
   /** Value/amount of the reward */
-  value: number | string | any;
+  value: number | string | Record<string, unknown>;
   
   /** Description of the reward */
   description: string;
@@ -221,10 +221,10 @@ export interface UnlockEvent {
 }
 
 // Utility types
-export type UnlockConditionValidator = (condition: UnlockConditionDefinition, context: any) => UnlockConditionResult;
+export type UnlockConditionValidator = (condition: UnlockConditionDefinition, context: UnlockEvaluationContext) => UnlockConditionResult;
 export type UnlockEvaluationContext = {
-  game: any;
-  entity: any;
+  game: Record<string, unknown>;
+  entity: Record<string, unknown> | null;
   timestamp: number;
-  [key: string]: any;
+  [key: string]: unknown;
 };

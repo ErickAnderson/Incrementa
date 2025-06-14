@@ -108,6 +108,37 @@ export type WorkerEventType =
   | 'workCompleted'
   | 'workerIdle';
 
+// Plugin System Events
+export type PluginEventType =
+  | 'pluginLoaded'
+  | 'pluginActivated'
+  | 'pluginDeactivated'
+  | 'pluginUnloaded';
+
+// Performance Monitoring Events
+export type PerformanceEventType =
+  | 'performanceWarning'
+  | 'performanceUpdate';
+
+// Registry Events  
+export type RegistryEventType =
+  | 'entityRegistered'
+  | 'entityUnregistered';
+
+// Production Management Events
+export type ProductionManagementEventType =
+  | 'productionOptimized'
+  | 'producerStarted'
+  | 'producerStopped';
+
+// Capacity Management Events
+export type CapacityEventType =
+  | 'capacityCacheInvalidated';
+
+// Auto-clicker Plugin Events
+export type AutoClickerEventType =
+  | 'autoClickerClick';
+
 // All system events
 export type SystemEventType = 
   | EntityEventType
@@ -119,15 +150,29 @@ export type SystemEventType =
   | GameEventType
   | TimerEventType
   | CostEventType
-  | WorkerEventType;
+  | WorkerEventType
+  | PluginEventType
+  | PerformanceEventType
+  | RegistryEventType
+  | ProductionManagementEventType
+  | CapacityEventType
+  | AutoClickerEventType;
+
+// Forward declare BaseEntity to avoid circular dependency
+interface BaseEntityRef {
+  id: string;
+  name: string;
+  isUnlocked: boolean;
+  tags?: string[];
+}
 
 // Event data structures
 export interface EntityEventData {
-  entity: any;
+  entity: BaseEntityRef;
   entityId: string;
   entityName: string;
-  oldValue?: any;
-  newValue?: any;
+  oldValue?: unknown;
+  newValue?: unknown;
   property?: string;
   timestamp: number;
 }
@@ -146,7 +191,7 @@ export interface BuildingEventData extends EntityEventData {
   level?: number;
   oldLevel?: number;
   newLevel?: number;
-  upgrade?: any;
+  upgrade?: Record<string, unknown>;
   cost?: Record<string, number>;
   spent?: Record<string, number>;
   error?: string;
@@ -174,8 +219,8 @@ export interface StorageEventData extends EntityEventData {
 export interface UpgradeEventData extends EntityEventData {
   upgradeId: string;
   targetEntityId?: string;
-  effect?: any;
-  result?: any;
+  effect?: Record<string, unknown>;
+  result?: Record<string, unknown>;
   spent?: Record<string, number>;
   error?: string;
   applications?: number;
@@ -186,9 +231,9 @@ export interface GameEventData {
   gameTime?: number;
   deltaTime?: number;
   entityId?: string;
-  entity?: any;
+  entity?: BaseEntityRef;
   offlineTime?: number;
-  progress?: any;
+  progress?: Record<string, unknown>;
   speed?: number;
 }
 
@@ -203,16 +248,16 @@ export interface TimerEventData {
 }
 
 export interface CostEventData {
-  costs?: any[];
-  validation?: any;
-  spending?: any;
+  costs?: Array<Record<string, unknown>>;
+  validation?: Record<string, unknown>;
+  spending?: Record<string, unknown>;
   entityId?: string;
   calculatedCosts?: Record<string, number>;
   timestamp: number;
 }
 
 // Generic system event
-export interface SystemEvent<T = any> {
+export interface SystemEvent<T = unknown> {
   type: SystemEventType;
   data: T;
   timestamp: number;
@@ -262,7 +307,7 @@ export interface EventEmissionOptions {
   entity?: boolean;
   
   /** Additional metadata to include */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   
   /** Priority level for event processing */
   priority?: 'low' | 'normal' | 'high';
@@ -288,7 +333,7 @@ export interface EventError {
   error: Error;
   event: SystemEvent;
   timestamp: number;
-  listener?: Function;
+  listener?: (...args: unknown[]) => void;
 }
 
 // Event replay system for debugging

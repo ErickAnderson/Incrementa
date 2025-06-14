@@ -18,7 +18,8 @@ describe('Storage Entity', () => {
     game = new Game(saveManager);
 
     // Create test resources using helper
-    const resources = setupGameWithBasicResources(game);
+    const resources = setupGameWithBasicResources(saveManager);
+    game = resources.game; // Use the game from the setup
     oreResource = resources.ore;
     oreResource.setAmount(50); // Adjust to test values
     
@@ -26,7 +27,7 @@ describe('Storage Entity', () => {
     metalResource.setAmount(25); // Adjust to test values
 
     // Create unlocked storage using helper instead of direct property access
-    storage = createUnlockedStorage(game, {
+    storage = createUnlockedStorage({
       id: 'test-storage',
       name: 'Test Storage',
       description: 'A test storage facility',
@@ -37,6 +38,12 @@ describe('Storage Entity', () => {
         metal: 50
       }
     });
+    
+    // Set game reference for storage to access resources
+    storage.setGameReference(game);
+    
+    // Register storage with game so it can contribute to global capacity
+    game.entityRegistry.registerEntity(storage, game);
   });
 
   describe('Basic Properties', () => {

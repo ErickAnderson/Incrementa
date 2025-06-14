@@ -184,7 +184,7 @@ export class ProducerBuilding extends Building {
       if (!resource || !('amount' in resource)) {
         return false;
       }
-      return (resource as any).amount >= input.amount;
+      return (resource as { amount: number }).amount >= input.amount;
     });
   }
 
@@ -215,7 +215,7 @@ export class ProducerBuilding extends Building {
 
     this.productionConfig.inputs.forEach(input => {
       const resource = this.game!.getEntityById(input.resourceId);
-      const available = resource && 'amount' in resource ? (resource as any).amount : 0;
+      const available = resource && 'amount' in resource ? (resource as { amount: number }).amount : 0;
       
       if (available < input.amount) {
         missing.push({
@@ -285,8 +285,8 @@ export class ProducerBuilding extends Building {
     this.productionConfig.inputs.forEach(input => {
       const resource = this.game!.getEntityById(input.resourceId);
       if (resource && 'decrement' in resource) {
-        const actualConsumed = Math.min(input.amount, (resource as any).amount);
-        (resource as any).decrement(actualConsumed);
+        const actualConsumed = Math.min(input.amount, (resource as { amount: number }).amount);
+        (resource as { decrement: (amount: number) => void }).decrement(actualConsumed);
         cycle.inputsConsumed[input.resourceId] = actualConsumed;
         this.productionState.totalConsumed[input.resourceId] += actualConsumed;
 
@@ -302,10 +302,10 @@ export class ProducerBuilding extends Building {
         const resource = this.game!.getEntityById(output.resourceId);
         if (resource && 'increment' in resource) {
           const actualProduced = output.amount * this.productionConfig.efficiency.current;
-          const canIncrement = (resource as any).canIncrement ? (resource as any).canIncrement(actualProduced) : true;
+          const canIncrement = (resource as { canIncrement?: (amount: number) => boolean }).canIncrement ? (resource as { canIncrement: (amount: number) => boolean }).canIncrement(actualProduced) : true;
           
           if (canIncrement) {
-            (resource as any).increment(actualProduced, true); // Respect capacity
+            (resource as { increment: (amount: number, respectCapacity?: boolean) => void }).increment(actualProduced, true); // Respect capacity
             cycle.outputsProduced[output.resourceId] = actualProduced;
             this.productionState.totalProduced[output.resourceId] += actualProduced;
           } else {
@@ -429,11 +429,27 @@ export class ProducerBuilding extends Building {
   }
 
   /**
+   * Alias for isCurrentlyProducing for compatibility
+   * @returns Whether production is active
+   */
+  get isProducing(): boolean {
+    return this.productionState.isProducing;
+  }
+
+  /**
+   * Gets production configuration
+   * @returns Production configuration object
+   */
+  getProductionConfig(): ProductionConfig {
+    return { ...this.productionConfig };
+  }
+
+  /**
    * Emits a production-specific event
    * @param type - Type of production event
    * @param data - Optional event data
    */
-  private emitProductionEvent(type: ProductionEventType, data?: any): void {
+  private emitProductionEvent(type: ProductionEventType, data?: Record<string, unknown>): void {
     this.emit(type, {
       producerId: this.id,
       type,
@@ -473,8 +489,8 @@ export class ProducerBuilding extends Building {
    * Sets the game reference for capacity and resource checking
    * @param game - Game instance reference
    */
-  setGameReference(game: any): void {
-    this.setGame(game);
+  setGameReference(game: unknown): void {
+    super.setGameReference(game);
   }
 
   /**

@@ -142,10 +142,10 @@ export interface EffectApplicationResult {
   property: string;
   
   /** The old value before modification */
-  oldValue: any;
+  oldValue: unknown;
   
   /** The new value after modification */
-  newValue: any;
+  newValue: unknown;
   
   /** Error message if this effect failed */
   error?: string;
@@ -182,7 +182,7 @@ export interface UpgradeEvent {
   type: UpgradeEventType;
   data: {
     upgradeId?: string;
-    upgrade?: any;
+    upgrade?: Record<string, unknown>;
     result?: UpgradeApplicationResult;
     effectResult?: EffectApplicationResult;
     entityId?: string;

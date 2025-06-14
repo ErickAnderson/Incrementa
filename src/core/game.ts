@@ -7,26 +7,37 @@ import { UnlockManager } from "./unlock-manager";
 import { EventManager, EventStats } from "./event-manager";
 import { CostSystem } from "./cost-system";
 import { UpgradeEffectProcessor } from "./upgrade-effect-processor";
+import { ProductionManager } from "./production-manager";
+import { CapacityManager } from "./capacity-manager";
+import { EntityRegistry } from "./entity-registry";
+import { PluginSystem } from "./plugin-system";
+import { EventBatchingSystem } from "./event-batching-system";
+import { PerformanceMonitor } from "./performance-monitor";
 import { logger } from "../utils/logger";
+import { GAME_CONSTANTS } from "../utils/constants";
 import type { CostDefinition } from "../types/cost-definition";
+import { IGame } from "./game-aware";
 /**
  * Game class that manages the entire game state and core loop functionality.
  */
-export class Game {
-    /** List of all resources in the game */
-    private resources: Resource[];
+export class Game implements IGame {
+    /** Entity registry for managing all entities */
+    private entityRegistry: EntityRegistry;
     
-    /** List of all buildings in the game */
-    private buildings: Building[];
+    /** Production optimization and coordination manager */
+    private productionManager: ProductionManager;
     
-    /** List of all upgrades in the game */
-    private upgrades: Upgrade[];
+    /** Capacity and storage management system */
+    private capacityManager: CapacityManager;
     
-    /** List of all storage buildings in the game */
-    private storages: Storage[];
+    /** Plugin system for extensibility */
+    public pluginSystem: PluginSystem;
     
-    /** Centralized collection of all entities */
-    private entities: Map<string, BaseEntity>;
+    /** Event batching system for performance optimization */
+    private eventBatchingSystem: EventBatchingSystem;
+    
+    /** Performance monitoring system */
+    public performanceMonitor: PerformanceMonitor;
     
     /** Timestamp of the last game update */
     private lastUpdate: number;
@@ -42,6 +53,9 @@ export class Game {
 
     /** Game speed multiplier */
     private gameSpeed: number;
+
+    /** Total time the game has been running (in milliseconds) */
+    private totalGameTime: number;
 
     /** Centralized unlock condition manager */
     private unlockManager: UnlockManager;
@@ -62,26 +76,37 @@ export class Game {
      */
     constructor(saveManager: SaveManager) {
         this.saveManager = saveManager;
-        this.resources = [];
-        this.buildings = [];
-        this.upgrades = [];
-        this.storages = [];
-        this.entities = new Map();
         this.lastUpdate = Date.now();
         this.isRunning = false;
         this.timers = new Map();
         this.gameSpeed = 1.0;
+        this.totalGameTime = 0;
         
-        // Initialize managers
-        this.unlockManager = new UnlockManager(this);
+        // Initialize core managers
         this.eventManager = new EventManager();
+        this.entityRegistry = new EntityRegistry(this.eventManager);
+        this.productionManager = new ProductionManager(this.eventManager);
+        this.capacityManager = new CapacityManager(this.eventManager);
+        
+        // Initialize game systems
+        this.unlockManager = new UnlockManager(this);
         this.costSystem = new CostSystem(this);
         this.upgradeEffectProcessor = new UpgradeEffectProcessor(this);
+        this.pluginSystem = new PluginSystem(this, this.eventManager);
+        
+        // Initialize performance systems
+        this.eventBatchingSystem = new EventBatchingSystem(this.eventManager, {
+            batchedTypes: ['resourceChanged', 'buildProgress', 'capacityChanged'],
+            excludedTypes: ['gameDestroyed', 'gamePaused', 'gameResumed', 'buildComplete']
+        });
+        this.performanceMonitor = new PerformanceMonitor(this.eventManager, {
+            enabled: false // Disabled by default, can be enabled via config
+        });
         
         // Initialize main game timer
         this.gameTimer = new Timer({
             totalTime: Number.MAX_SAFE_INTEGER, // Effectively infinite for main loop
-            tickRate: 16, // ~60 FPS
+            tickRate: GAME_CONSTANTS.DEFAULT_TICK_RATE, // ~60 FPS
             onUpdateCallbacks: [() => this.gameLoop()],
             conditionCallback: () => this.isRunning
         });
@@ -92,7 +117,7 @@ export class Game {
      * @returns {Resource[]} Array of all game resources
      */
     getCurrentResources(): Resource[] {
-        return this.resources;
+        return this.entityRegistry.getResources();
     }
 
     /**
@@ -100,7 +125,7 @@ export class Game {
      * @returns {Building[]} Array of all game buildings
      */
     getCurrentBuildings(): Building[] {
-        return this.buildings;
+        return this.entityRegistry.getBuildings();
     }
 
     /**
@@ -108,7 +133,7 @@ export class Game {
      * @returns {Upgrade[]} Array of all game upgrades
      */
     getCurrentUpgrades(): Upgrade[] {
-        return this.upgrades;
+        return this.entityRegistry.getUpgrades();
     }
 
     /**
@@ -116,7 +141,7 @@ export class Game {
      * @returns {Storage[]} Array of all storage buildings
      */
     getStorageStatus(): Storage[] {
-        return this.storages;
+        return this.entityRegistry.getStorages();
     }
 
     /**
@@ -124,9 +149,14 @@ export class Game {
      * @param entity - The entity to add
      */
     addEntity(entity: BaseEntity): void {
-        this.entities.set(entity.id, entity);
+        // Register with entity registry
+        const result = this.entityRegistry.registerEntity(entity, this);
+        if (!result.success) {
+            logger.error(`Game: Failed to add entity ${entity.name}: ${result.error}`);
+            return;
+        }
         
-        // Register with managers
+        // Register with event manager
         this.eventManager.registerEntity(entity);
         this.eventManager.routeEntityEvents(entity);
         
@@ -141,44 +171,26 @@ export class Game {
                     }
                 });
             });
+            
+            // Invalidate capacity cache when storage buildings are added
+            if (entity instanceof Storage) {
+                this.capacityManager.invalidateCache();
+                logger.info(`Game: Storage '${entity.name}' added - capacity cache invalidated`);
+                
+                // Optimize production when storage capacity changes
+                Promise.resolve().then(() => {
+                    const optimizationResult = this.optimizeProduction();
+                    if (optimizationResult.started > 0) {
+                        logger.info(`Storage addition triggered production resumption: ${optimizationResult.started} producers restarted`);
+                    }
+                });
+            }
         }
         
         // Register unlock condition if entity has one and isn't already unlocked
         const unlockCondition = entity.getUnlockCondition();
         if (unlockCondition && !entity.isUnlocked) {
             this.unlockManager.registerUnlockCondition(entity, unlockCondition);
-        }
-        
-        // Add to specific collections for backward compatibility
-        if (entity instanceof Resource) {
-            this.resources.push(entity);
-            // Set game reference for capacity checking
-            entity.setGameReference(this);
-            logger.debug(`Game: Resource '${entity.name}' registered for capacity management`);
-        } else if (entity instanceof Building) {
-            this.buildings.push(entity);
-            if (entity instanceof Storage) {
-                this.storages.push(entity);
-                // Set game reference for capacity management
-                entity.setGameReference(this);
-                logger.info(`Game: Storage '${entity.name}' added - now managing ${this.storages.length} storage buildings`);
-                
-                // Optimize production when storage capacity changes
-                // This allows stopped producers to resume if they now have capacity
-                Promise.resolve().then(() => {
-                    const optimizationResult = this.optimizeProduction();
-                    if (optimizationResult.started > 0) {
-                        logger.info(`Storage addition triggered production resumption: ${optimizationResult.started} producers restarted`);
-                    }
-                }); // Use Promise to ensure the storage is fully set up before optimization
-            }
-            // Set game reference for producer buildings
-            if ('setGameReference' in entity) {
-                (entity as any).setGameReference(this);
-                logger.debug(`Game: Game reference set for building '${entity.name}'`);
-            }
-        } else if (entity instanceof Upgrade) {
-            this.upgrades.push(entity);
         }
         
         // Emit entity added event
@@ -193,7 +205,7 @@ export class Game {
      * @returns Whether the entity was successfully removed
      */
     removeEntity(entityId: string): boolean {
-        const entity = this.entities.get(entityId);
+        const entity = this.entityRegistry.getEntityById(entityId);
         if (!entity) {
             return false;
         }
@@ -205,38 +217,17 @@ export class Game {
         this.eventManager.unregisterEntity(entityId);
         this.unlockManager.removeUnlockCondition(entityId);
 
-        // Remove from specific collections
-        if (entity instanceof Resource) {
-            const index = this.resources.indexOf(entity);
-            if (index > -1) this.resources.splice(index, 1);
-            // Clear game reference
-            entity.setGameReference(undefined);
-            logger.debug(`Game: Resource '${entity.name}' unregistered from capacity management`);
-        } else if (entity instanceof Building) {
-            const index = this.buildings.indexOf(entity);
-            if (index > -1) this.buildings.splice(index, 1);
-            if (entity instanceof Storage) {
-                const storageIndex = this.storages.indexOf(entity);
-                if (storageIndex > -1) this.storages.splice(storageIndex, 1);
-                // Clear game reference
-                entity.setGameReference(undefined);
-                logger.info(`Game: Storage '${entity.name}' removed - ${this.storages.length} storage buildings remaining`);
-            }
-            // Clear game reference for producer buildings
-            if ('setGameReference' in entity) {
-                (entity as any).setGameReference(undefined);
-                logger.debug(`Game: Game reference cleared for building '${entity.name}'`);
-            }
-        } else if (entity instanceof Upgrade) {
-            const index = this.upgrades.indexOf(entity);
-            if (index > -1) this.upgrades.splice(index, 1);
+        // Invalidate capacity cache if removing storage
+        if (entity instanceof Storage) {
+            this.capacityManager.invalidateCache();
+            logger.info(`Game: Storage '${entity.name}' removed - capacity cache invalidated`);
         }
 
-        // Clean up event listeners
-        entity.removeAllListeners();
-        
-        this.entities.delete(entityId);
-        logger.info(`Entity ${entity.name} (${entityId}) removed from game`);
+        // Remove from entity registry
+        const success = this.entityRegistry.unregisterEntity(entityId);
+        if (success) {
+            logger.info(`Entity ${entity.name} (${entityId}) removed from game`);
+        }
         return true;
     }
 
@@ -246,7 +237,7 @@ export class Game {
      * @returns The entity if found, undefined otherwise
      */
     getEntityById(entityId: string): BaseEntity | undefined {
-        return this.entities.get(entityId);
+        return this.entityRegistry.getEntityById(entityId);
     }
 
     /**
@@ -255,7 +246,7 @@ export class Game {
      * @returns The resource if found, undefined otherwise
      */
     getResourceById(resourceId: string): Resource | undefined {
-        const entity = this.entities.get(resourceId);
+        const entity = this.entityRegistry.getEntityById(resourceId);
         return entity instanceof Resource ? entity : undefined;
     }
 
@@ -265,7 +256,7 @@ export class Game {
      * @returns The resource if found, undefined otherwise
      */
     getResourceByName(name: string): Resource | undefined {
-        return this.resources.find(r => r.name === name);
+        return this.entityRegistry.getResources().find(r => r.name === name);
     }
 
     /**
@@ -306,7 +297,7 @@ export class Game {
         tags?: string[];
     }): Building {
         const building = new Building(config);
-        building.setGame(this);
+        building.setGameReference(this);
         this.addEntity(building);
         return building;
     }
@@ -328,7 +319,7 @@ export class Game {
         tags?: string[];
     }): Storage {
         const storage = new Storage(config);
-        storage.setGame(this);
+        storage.setGameReference(this);
         
         // Log storage creation with capacity info
         const capacityInfo = config.capacities 
@@ -349,14 +340,14 @@ export class Game {
         id?: string;
         name: string;
         description?: string;
-        effect?: any;
+        effect?: Record<string, unknown>;
         costs?: CostDefinition[];
         cost?: Record<string, number>; // Legacy support
         unlockCondition?: () => boolean;
         tags?: string[];
     }): Upgrade {
         const upgrade = new Upgrade(config);
-        upgrade.setGame(this);
+        upgrade.setGameReference(this);
         this.addEntity(upgrade);
         return upgrade;
     }
@@ -367,7 +358,7 @@ export class Game {
      * @param config - Entity configuration
      * @returns The created entity
      */
-    createEntity<T extends BaseEntity>(EntityClass: new (config: any) => T, config: any): T {
+    createEntity<T extends BaseEntity>(EntityClass: new (config: Record<string, unknown>) => T, config: Record<string, unknown>): T {
         const entity = new EntityClass(config);
         this.addEntity(entity);
         return entity;
@@ -546,7 +537,7 @@ export class Game {
      * @param eventName - Name of the event to listen for
      * @param callback - Function to call when event is emitted
      */
-    on(eventName: string, callback: Function): void {
+    on(eventName: string, callback: (...args: unknown[]) => void): void {
         this.eventManager.on(eventName, callback);
     }
 
@@ -556,7 +547,7 @@ export class Game {
      * @param callback - The callback function to remove
      * @returns Whether the listener was successfully removed
      */
-    off(eventName: string, callback: Function): boolean {
+    off(eventName: string, callback: (...args: unknown[]) => void): boolean {
         return this.eventManager.off(eventName, callback);
     }
 
@@ -565,7 +556,7 @@ export class Game {
      * @param eventName - Name of the event to emit
      * @param data - Optional data to pass with the event
      */
-    emit(eventName: string, data?: any): void {
+    emit(eventName: string, data?: unknown): void {
         this.eventManager.emit(eventName, data);
     }
 
@@ -575,24 +566,7 @@ export class Game {
      * @returns Total capacity limit for the resource
      */
     getTotalCapacityFor(resourceId: string): number {
-        let totalCapacity = 0;
-        let storageCount = 0;
-        
-        for (const storage of this.storages) {
-            if (storage.isBuilt) {
-                const capacity = storage.getCapacityFor(resourceId);
-                if (capacity !== undefined) {
-                    totalCapacity += capacity;
-                    storageCount++;
-                }
-            }
-        }
-        
-        if (storageCount > 0) {
-            logger.debug(`Game: Total capacity for ${resourceId}: ${totalCapacity} (from ${storageCount} storage buildings)`);
-        }
-        
-        return totalCapacity;
+        return this.capacityManager.getTotalCapacityFor(resourceId, this.entityRegistry.getStorages());
     }
 
     /**
@@ -602,21 +576,9 @@ export class Game {
      * @returns Whether there is sufficient capacity
      */
     hasGlobalCapacity(resourceId: string, amount: number): boolean {
-        const totalCapacity = this.getTotalCapacityFor(resourceId);
-        if (totalCapacity === 0) {
-            // No storage buildings define capacity for this resource - unlimited
-            logger.debug(`Game: No capacity limits for ${resourceId} - allowing unlimited storage`);
-            return true;
-        }
-        
-        const currentAmount = this.getResourceById(resourceId)?.amount || 0;
-        const hasCapacity = currentAmount + amount <= totalCapacity;
-        
-        if (!hasCapacity) {
-            logger.warn(`Game: Global capacity exceeded for ${resourceId} - attempted +${amount}, current: ${currentAmount}, limit: ${totalCapacity}`);
-        }
-        
-        return hasCapacity;
+        const resource = this.getResourceById(resourceId);
+        const currentAmount = resource?.amount || 0;
+        return this.capacityManager.hasGlobalCapacity(resourceId, amount, currentAmount, this.entityRegistry.getStorages());
     }
 
     /**
@@ -625,16 +587,9 @@ export class Game {
      * @returns Remaining capacity for the resource
      */
     getRemainingCapacityFor(resourceId: string): number {
-        const totalCapacity = this.getTotalCapacityFor(resourceId);
-        const currentAmount = this.getResourceById(resourceId)?.amount || 0;
-        const remaining = Math.max(0, totalCapacity - currentAmount);
-        
-        if (totalCapacity > 0) {
-            const utilization = ((currentAmount / totalCapacity) * 100).toFixed(1);
-            logger.debug(`Game: Remaining capacity for ${resourceId}: ${remaining}/${totalCapacity} (${utilization}% used)`);
-        }
-        
-        return remaining;
+        const resource = this.getResourceById(resourceId);
+        const currentAmount = resource?.amount || 0;
+        return this.capacityManager.getRemainingCapacityFor(resourceId, currentAmount, this.entityRegistry.getStorages());
     }
 
     // Production Management Methods
@@ -646,11 +601,11 @@ export class Game {
     startAllProduction(): BaseEntity[] {
         const startedBuildings: BaseEntity[] = [];
         
-        for (const entity of this.entities.values()) {
+        for (const entity of this.entityRegistry.getAllEntities()) {
             if (entity.isUnlocked && 'startProduction' in entity && 'canProduce' in entity) {
-                const producer = entity as any;
-                if (producer.canProduce() && !producer.isCurrentlyProducing()) {
-                    if (producer.startProduction()) {
+                const producer = entity as Record<string, unknown> & BaseEntity;
+                if (typeof producer.canProduce === 'function' && !producer.isCurrentlyProducing()) {
+                    if (typeof producer.startProduction === 'function' && producer.startProduction()) {
                         startedBuildings.push(entity);
                     }
                 }
@@ -668,12 +623,14 @@ export class Game {
     stopAllProduction(): BaseEntity[] {
         const stoppedBuildings: BaseEntity[] = [];
         
-        for (const entity of this.entities.values()) {
+        for (const entity of this.entityRegistry.getAllEntities()) {
             if (entity.isUnlocked && 'stopProduction' in entity && 'isCurrentlyProducing' in entity) {
-                const producer = entity as any;
-                if (producer.isCurrentlyProducing()) {
-                    producer.stopProduction();
-                    stoppedBuildings.push(entity);
+                const producer = entity as Record<string, unknown> & BaseEntity;
+                if (typeof producer.isCurrentlyProducing === 'function' && producer.isCurrentlyProducing()) {
+                    if (typeof producer.stopProduction === 'function') {
+                        producer.stopProduction();
+                        stoppedBuildings.push(entity);
+                    }
                 }
             }
         }
@@ -689,7 +646,7 @@ export class Game {
     getProducerBuildings(): BaseEntity[] {
         const producers: BaseEntity[] = [];
         
-        for (const entity of this.entities.values()) {
+        for (const entity of this.entityRegistry.getAllEntities()) {
             if ('startProduction' in entity && 'stopProduction' in entity) {
                 producers.push(entity);
             }
@@ -705,10 +662,10 @@ export class Game {
     getActiveProducers(): BaseEntity[] {
         const activeProducers: BaseEntity[] = [];
         
-        for (const entity of this.entities.values()) {
+        for (const entity of this.entityRegistry.getAllEntities()) {
             if (entity.isUnlocked && 'isCurrentlyProducing' in entity) {
-                const producer = entity as any;
-                if (producer.isCurrentlyProducing()) {
+                const producer = entity as Record<string, unknown> & BaseEntity;
+                if (typeof producer.isCurrentlyProducing === 'function' && producer.isCurrentlyProducing()) {
                     activeProducers.push(entity);
                 }
             }
@@ -740,8 +697,8 @@ export class Game {
         
         for (const entity of producers) {
             if ('getProductionStats' in entity) {
-                const producer = entity as any;
-                const stats = producer.getProductionStats();
+                const producer = entity as Record<string, unknown> & BaseEntity;
+                const stats = typeof producer.getProductionStats === 'function' ? producer.getProductionStats() : {};
                 
                 totalCycles += stats.totalCycles || 0;
                 
@@ -815,16 +772,18 @@ export class Game {
         for (const entity of this.getProducerBuildings()) {
             if (!entity.isUnlocked) continue;
             
-            const producer = entity as any;
+            const producer = entity as Record<string, unknown> & BaseEntity;
             
             // Check if producer should be active but isn't
             if ('canProduce' in producer && 'isCurrentlyProducing' in producer) {
-                if (!producer.isCurrentlyProducing() && !producer.canProduce()) {
+                const canProduce = typeof producer.canProduce === 'function' ? producer.canProduce() : false;
+                const isProducing = typeof producer.isCurrentlyProducing === 'function' ? producer.isCurrentlyProducing() : false;
+                if (!isProducing && !canProduce) {
                     let reason = 'Unknown';
                     
                     // Check for input shortages
                     if ('getProductionInputs' in producer) {
-                        const inputs = producer.getProductionInputs();
+                        const inputs = typeof producer.getProductionInputs === 'function' ? producer.getProductionInputs() : [];
                         for (const input of inputs) {
                             const resource = this.getResourceById(input.resourceId);
                             const available = resource?.amount || 0;
@@ -841,7 +800,7 @@ export class Game {
                     
                     // Check for capacity limits
                     if ('getProductionOutputs' in producer) {
-                        const outputs = producer.getProductionOutputs();
+                        const outputs = typeof producer.getProductionOutputs === 'function' ? producer.getProductionOutputs() : [];
                         for (const output of outputs) {
                             if (!this.hasGlobalCapacity(output.resourceId, output.amount)) {
                                 const capacity = this.getTotalCapacityFor(output.resourceId);
@@ -880,52 +839,97 @@ export class Game {
         stopped: number;
         bottlenecks: string[];
     } {
-        let started = 0;
-        let stopped = 0;
-        const bottlenecks: string[] = [];
-        
-        for (const entity of this.getProducerBuildings()) {
-            if (!entity.isUnlocked) continue;
-            
-            const producer = entity as any;
-            
-            if ('canProduce' in producer && 'startProduction' in producer && 'stopProduction' in producer) {
-                const canProduce = producer.canProduce();
-                const isProducing = producer.isCurrentlyProducing();
-                
-                if (canProduce && !isProducing) {
-                    if (producer.startProduction()) {
-                        started++;
-                    }
-                } else if (!canProduce && isProducing) {
-                    producer.stopProduction();
-                    stopped++;
-                    bottlenecks.push(`${entity.name}: Cannot produce`);
-                }
-            }
-        }
-        
-        const result = { started, stopped, bottlenecks };
-        logger.info(`Production optimization: Started ${started}, Stopped ${stopped}, Bottlenecks: ${bottlenecks.length}`);
-        return result;
+        return this.productionManager.optimizeProduction(
+            this.entityRegistry.getBuildings(),
+            (id) => this.getResourceById(id),
+            (resourceId, amount) => this.hasGlobalCapacity(resourceId, amount)
+        );
     }
 
     /**
      * Saves the current game state to persistent storage.
+     * Serializes entities, resources, and game configuration to the save manager.
      * @returns {void}
      */
     saveState(): void {
-        // TODO: Implement actual save functionality
-        logger.info("Game state saved.");
+        try {
+            const gameState = {
+                entities: this.entityRegistry.getAllEntities().map((entity) => ({
+                    id: entity.id,
+                    type: entity.constructor.name,
+                    isUnlocked: entity.isUnlocked,
+                    // Add other serializable properties as needed
+                })),
+                resources: this.entityRegistry.getResources().map(resource => ({
+                    id: resource.id,
+                    amount: resource.amount,
+                    isUnlocked: resource.isUnlocked
+                })),
+                gameSpeed: this.gameSpeed,
+                totalGameTime: this.totalGameTime,
+                plugins: this.pluginSystem.getPluginSaveData()
+            };
+            
+            this.saveManager.saveData('gameState', JSON.stringify(gameState));
+            logger.info("Game state saved successfully.");
+        } catch (error) {
+            logger.error(`Failed to save game state: ${error}`);
+        }
     }
 
     /**
      * Loads the previously saved game state from persistent storage.
+     * Deserializes and restores entities, resources, and game configuration.
      * @returns {void}
      */
     loadState(): void {
-        // TODO: Implement actual load functionality
-        logger.info("Game state loaded.");
+        try {
+            const savedData = this.saveManager.loadData('gameState');
+            if (!savedData) {
+                logger.info("No saved game state found.");
+                return;
+            }
+            
+            const gameState = JSON.parse(savedData);
+            
+            // Restore game properties
+            if (gameState.gameSpeed !== undefined) {
+                this.gameSpeed = gameState.gameSpeed;
+            }
+            if (gameState.totalGameTime !== undefined) {
+                this.totalGameTime = gameState.totalGameTime;
+            }
+            
+            // Restore resource amounts and unlock states
+            if (gameState.resources) {
+                for (const savedResource of gameState.resources) {
+                    const resource = this.getResourceById(savedResource.id);
+                    if (resource) {
+                        resource.amount = savedResource.amount;
+                        resource.isUnlocked = savedResource.isUnlocked;
+                    }
+                }
+            }
+            
+            // Restore entity unlock states
+            if (gameState.entities) {
+                for (const savedEntity of gameState.entities) {
+                    const entity = this.getEntityById(savedEntity.id);
+                    if (entity) {
+                        entity.isUnlocked = savedEntity.isUnlocked;
+                    }
+                }
+            }
+            
+            // Load plugin data
+            if (gameState.plugins) {
+                this.pluginSystem.loadPluginSaveData(gameState.plugins);
+            }
+            
+            logger.info("Game state loaded successfully.");
+        } catch (error) {
+            logger.error(`Failed to load game state: ${error}`);
+        }
     }
 
     /**
@@ -988,9 +992,13 @@ export class Game {
     private gameLoop(): void {
         if (!this.isRunning) return;
 
+        // Record frame timing for performance monitoring
+        this.performanceMonitor.recordFrameTime();
+
         const now = Date.now();
         const deltaTime = (now - this.lastUpdate) * this.gameSpeed;
         this.lastUpdate = now;
+        this.totalGameTime += deltaTime;
 
         // Update all entities
         this.updateEntities(deltaTime);
@@ -1008,11 +1016,16 @@ export class Game {
      * @param deltaTime - Time elapsed since last update in milliseconds
      */
     private updateEntities(deltaTime: number): void {
-        for (const entity of this.entities.values()) {
-            if (entity.isUnlocked) {
-                entity.onUpdate(deltaTime);
-            }
+        const updatableEntities = this.entityRegistry.getUpdatableEntities();
+        for (const entity of updatableEntities) {
+            entity.onUpdate(deltaTime);
         }
+        
+        // Perform maintenance on managers
+        this.capacityManager.performMaintenance();
+        
+        // Update active plugins
+        this.pluginSystem.updatePlugins(deltaTime);
     }
 
     /**
@@ -1022,7 +1035,7 @@ export class Game {
      * @returns {void}
      */
     private updateResources(deltaTime: number): void {
-        this.resources.forEach(resource => {
+        this.entityRegistry.getResources().forEach(resource => {
             if (resource.isUnlocked) {
                 resource.amount += resource.rate * deltaTime;
             }
@@ -1042,7 +1055,7 @@ export class Game {
         const offlineTime = (now - lastPlayTime) / 1000; // Convert to seconds
         
         // Calculate offline gains
-        this.resources.forEach(resource => {
+        this.entityRegistry.getResources().forEach(resource => {
             if (resource.isUnlocked) {
                 const offlineGain = resource.rate * offlineTime;
                 resource.amount += offlineGain;
@@ -1050,6 +1063,36 @@ export class Game {
         });
         
         this.saveManager.setLastPlayTime(now);
+    }
+
+    /**
+     * Gets current performance metrics
+     * @returns Performance metrics snapshot
+     */
+    getPerformanceMetrics() {
+        const entityStats = this.entityRegistry.getEntityStats();
+        return this.performanceMonitor.getMetrics({
+            total: entityStats.total,
+            unlocked: entityStats.unlocked,
+            updatable: this.entityRegistry.getUpdatableEntities().length
+        });
+    }
+
+    /**
+     * Enables or disables performance monitoring
+     * @param enabled - Whether to enable performance monitoring
+     */
+    setPerformanceMonitoring(enabled: boolean): void {
+        this.performanceMonitor.setEnabled(enabled);
+    }
+
+    /**
+     * Gets performance optimization recommendations
+     * @returns Array of optimization suggestions
+     */
+    getPerformanceRecommendations(): string[] {
+        const metrics = this.getPerformanceMetrics();
+        return this.performanceMonitor.getOptimizationRecommendations(metrics);
     }
 
     /**
@@ -1071,16 +1114,23 @@ export class Game {
         // Destroy managers
         this.unlockManager.destroy();
         this.eventManager.destroy();
+        this.eventBatchingSystem.destroy();
+        this.performanceMonitor.destroy();
         
-        // Clear all entities
-        for (const entity of this.entities.values()) {
-            entity.removeAllListeners();
-        }
-        this.entities.clear();
-        this.resources = [];
-        this.buildings = [];
-        this.upgrades = [];
-        this.storages = [];
+        // Clear all entities from registry
+        // Note: EntityRegistry handles the cleanup of individual entities
+        const entityIds: string[] = [];
+        const allResources = this.entityRegistry.getResources();
+        const allBuildings = this.entityRegistry.getBuildings();
+        const allUpgrades = this.entityRegistry.getUpgrades();
+        
+        [...allResources, ...allBuildings, ...allUpgrades].forEach(entity => {
+            entityIds.push(entity.id);
+        });
+        
+        entityIds.forEach(id => {
+            this.entityRegistry.unregisterEntity(id);
+        });
         
         logger.info('Game destroyed and resources cleaned up');
     }

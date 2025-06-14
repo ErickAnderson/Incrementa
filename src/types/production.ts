@@ -142,7 +142,7 @@ export interface ProductionEvent {
   producerId: string;
   
   /** Event data specific to event type */
-  data?: any;
+  data?: Record<string, unknown>;
   
   /** Timestamp when event occurred */
   timestamp: number;

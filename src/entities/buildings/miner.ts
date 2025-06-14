@@ -151,7 +151,7 @@ export class Miner extends ProducerBuilding {
      * Gets the resource being mined
      * @returns The resource entity or null if not found
      */
-    getMinedResource(): any {
+    getMinedResource(): unknown {
         if (!this.game) {
             return null;
         }

@@ -14,7 +14,8 @@ describe('Upgrade Effects System', () => {
 
   beforeEach(() => {
     const saveManager = new SaveManager();
-    game = setupGameWithBasicResources(saveManager);
+    const setup = setupGameWithBasicResources(saveManager);
+    game = setup.game;
   });
 
   describe('Data-Driven Upgrade Effects', () => {
@@ -23,7 +24,7 @@ describe('Upgrade Effects System', () => {
         name: 'Test Mine',
         productionRate: 10
       });
-      game.addEntity(building);
+      game.entityRegistry.registerEntity(building, game);
       
       const effect: UpgradeEffectDefinition = {
         type: 'property_modifier',
@@ -63,7 +64,7 @@ describe('Upgrade Effects System', () => {
         name: 'Test Mine',
         productionRate: 100
       });
-      game.addEntity(building);
+      game.entityRegistry.registerEntity(building, game);
       
       const effect: UpgradeEffectDefinition = {
         type: 'property_modifier',
@@ -107,8 +108,8 @@ describe('Upgrade Effects System', () => {
         tags: ['mining']
       });
       
-      game.addEntity(building1);
-      game.addEntity(building2);
+      game.entityRegistry.registerEntity(building1, game);
+      game.entityRegistry.registerEntity(building2, game);
       
       const effect: UpgradeEffectDefinition = {
         type: 'property_modifier',
@@ -148,7 +149,7 @@ describe('Upgrade Effects System', () => {
         name: 'Test Mine',
         productionRate: 10
       });
-      game.addEntity(building);
+      game.entityRegistry.registerEntity(building, game);
       
       const effect: UpgradeEffectDefinition = {
         type: 'property_modifier',
@@ -201,7 +202,7 @@ describe('Upgrade Effects System', () => {
   describe('Cost Integration', () => {
     test('should calculate upgrade costs with scaling', () => {
       const gold = createUnlockedResource({ name: 'Gold', initialAmount: 10000 });
-      game.addEntity(gold);
+      game.entityRegistry.registerEntity(gold, game);
       
       const upgrade = new Upgrade({
         name: 'Scaling Upgrade',
@@ -226,7 +227,7 @@ describe('Upgrade Effects System', () => {
 
     test('should validate upgrade affordability', () => {
       const gold = createUnlockedResource({ name: 'Gold', initialAmount: 500 });
-      game.addEntity(gold);
+      game.entityRegistry.registerEntity(gold, game);
       
       const upgrade = new Upgrade({
         name: 'Expensive Upgrade',
@@ -243,7 +244,7 @@ describe('Upgrade Effects System', () => {
 
     test('should purchase upgrades with resource spending', () => {
       const gold = createUnlockedResource({ name: 'Gold', initialAmount: 1000 });
-      game.addEntity(gold);
+      game.entityRegistry.registerEntity(gold, game);
       
       const upgrade = new Upgrade({
         name: 'Purchase Test',
@@ -300,7 +301,7 @@ describe('Upgrade Effects System', () => {
   describe('Error Handling', () => {
     test('should handle invalid property paths gracefully', () => {
       const building = createUnlockedBuilding({ name: 'Test Mine' });
-      game.addEntity(building);
+      game.entityRegistry.registerEntity(building, game);
       
       const effect: UpgradeEffectDefinition = {
         type: 'property_modifier',
