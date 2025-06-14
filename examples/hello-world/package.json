@@ -1,0 +1,19 @@
+{
+  "name": "incrementa-hello-world",
+  "version": "1.0.0",
+  "description": "Hello World example for the Incrementa framework",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite"
+  },
+  "dependencies": {
+    "incrementa": "file:../../"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

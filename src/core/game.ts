@@ -1,4 +1,4 @@
-import { Building, Resource, Storage } from "../entities";
+import { Building, Resource, Storage, Miner } from "../entities";
 import { Upgrade } from "./upgrade";
 import { SaveManager } from "./save-manager";
 import { BaseEntity } from "./base-entity";
@@ -300,6 +300,31 @@ export class Game implements IGame {
         building.setGameReference(this);
         this.addEntity(building);
         return building;
+    }
+
+    /**
+     * Factory method to create and register a new miner building
+     * @param config - Miner configuration
+     * @returns The created miner building
+     */
+    createMiner(config: {
+        id?: string;
+        name: string;
+        description?: string;
+        costs?: CostDefinition[];
+        cost?: Record<string, number>; // Legacy support
+        buildTime?: number;
+        gatherRate: number;
+        resourceId: string;
+        unlockCondition?: () => boolean;
+        tags?: string[];
+        efficiency?: number;
+        autoStart?: boolean;
+    }): Miner {
+        const miner = new Miner(config);
+        miner.setGameReference(this);
+        this.addEntity(miner);
+        return miner;
     }
 
     /**
