@@ -62,11 +62,9 @@ export class CapacityService implements ICapacityService {
             }
         }
 
-        // If no specific capacity is defined, assume unlimited
-        if (totalCapacity === 0) {
-            totalCapacity = Number.MAX_SAFE_INTEGER;
-            logger.debug(`CapacityService: No capacity limit defined for ${resourceId}, using unlimited`);
-        }
+        // A total of 0 means no built storage defines a limit for this
+        // resource. That is reported as 0 here; the "unlimited" interpretation
+        // lives in hasGlobalCapacity / getRemainingCapacityFor.
 
         // Update cache
         this.capacityCache.set(resourceId, totalCapacity);
@@ -80,16 +78,21 @@ export class CapacityService implements ICapacityService {
      * Checks if there is sufficient capacity across all storage buildings for a resource amount
      */
     hasGlobalCapacity(resourceId: string, amount: number): boolean {
+        const totalCapacity = this.getTotalCapacityFor(resourceId);
+
+        // No built storage defines a limit for this resource => unlimited
+        if (totalCapacity === 0) {
+            return true;
+        }
+
         const resource = this.getResourceById(resourceId);
         const currentAmount = resource?.amount || 0;
-        const totalCapacity = this.getTotalCapacityFor(resourceId);
-        
         const wouldExceedCapacity = (currentAmount + amount) > totalCapacity;
-        
+
         if (wouldExceedCapacity) {
             logger.debug(`CapacityService: Capacity check failed for ${resourceId}: ${currentAmount} + ${amount} > ${totalCapacity}`);
         }
-        
+
         return !wouldExceedCapacity;
     }
 
@@ -97,10 +100,15 @@ export class CapacityService implements ICapacityService {
      * Gets remaining capacity for a resource across all storage buildings
      */
     getRemainingCapacityFor(resourceId: string): number {
+        const totalCapacity = this.getTotalCapacityFor(resourceId);
+
+        // No built storage defines a limit for this resource => unlimited
+        if (totalCapacity === 0) {
+            return Number.MAX_SAFE_INTEGER;
+        }
+
         const resource = this.getResourceById(resourceId);
         const currentAmount = resource?.amount || 0;
-        const totalCapacity = this.getTotalCapacityFor(resourceId);
-        
         const remaining = Math.max(0, totalCapacity - currentAmount);
         logger.debug(`CapacityService: Remaining capacity for ${resourceId}: ${remaining} (${totalCapacity} - ${currentAmount})`);
         

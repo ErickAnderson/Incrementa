@@ -241,11 +241,26 @@ export class Game implements IGame {
     getResourceById(resourceId: string): Resource | undefined { return this.entities.getResourceById(resourceId); }
     getResourceByName(name: string): Resource | undefined { return this.entities.getResourceByName(name); }
 
-    createResource(config: ResourceConfig): Resource { return this.entities.createResource(config); }
-    createBuilding(config: BuildingConfig): Building { return this.entities.createBuilding(config); }
-    createMiner(config: MinerConfig): Miner { return this.entities.createMiner(config); }
-    createStorage(config: StorageConfig): Storage { return this.entities.createStorage(config); }
-    createUpgrade(config: UpgradeConfig): Upgrade { return this.entities.createUpgrade(config); }
+    createResource(config: ResourceConfig): Resource { return this.wireCreatedEntity(this.entities.createResource(config)); }
+    createBuilding(config: BuildingConfig): Building { return this.wireCreatedEntity(this.entities.createBuilding(config)); }
+    createMiner(config: MinerConfig): Miner { return this.wireCreatedEntity(this.entities.createMiner(config)); }
+    createStorage(config: StorageConfig): Storage { return this.wireCreatedEntity(this.entities.createStorage(config)); }
+    createUpgrade(config: UpgradeConfig): Upgrade { return this.wireCreatedEntity(this.entities.createUpgrade(config)); }
+
+    /**
+     * Wires an entity that was just created by a factory method into the event
+     * and unlock systems. The entity is already registered with the entity
+     * service; this connects the cross-service concerns that addEntity performs.
+     */
+    private wireCreatedEntity<T extends BaseEntity>(entity: T): T {
+        this.events.registerEntity(entity);
+        this.events.routeEntityEvents(entity);
+        const unlockCondition = entity.getUnlockCondition();
+        if (unlockCondition && !entity.isUnlocked) {
+            this.unlocks.registerUnlockCondition(entity, unlockCondition);
+        }
+        return entity;
+    }
 
     addEntity(entity: BaseEntity): void {
         this.entities.addEntity(entity);
@@ -271,6 +286,8 @@ export class Game implements IGame {
     getProducerBuildings(): BaseEntity[] { return this.production.getProducerBuildings(); }
     getActiveProducers(): BaseEntity[] { return this.production.getActiveProducers(); }
     optimizeProduction(): ProductionOptimizationResult { return this.production.optimizeProduction(); }
+    checkResourceAvailability(inputs: Array<{ resourceId: string; amount: number }>): boolean { return this.production.checkResourceAvailability(inputs); }
+    checkProductionCapacity(outputs: Array<{ resourceId: string; amount: number }>): boolean { return this.production.checkProductionCapacity(outputs); }
     getGlobalProductionStats(): GlobalProductionStats { return this.production.getGlobalProductionStats(); }
     getProductionBottlenecks(): ProductionBottlenecks { return this.production.getProductionBottlenecks(); }
 
@@ -329,6 +346,11 @@ export class Game implements IGame {
             this.pluginSystem.updatePlugins(deltaTime);
             this.updateResources(deltaTime);
         });
+
+        // Storage capacity depends on which storages are built; invalidate the
+        // capacity cache whenever construction completes or capacity changes.
+        this.events.on('buildComplete', () => this.capacity.invalidateCache());
+        this.events.on('capacityChanged', () => this.capacity.invalidateCache());
 
         this.gameState.setTotalGameTime(this.totalGameTime);
         this.gameLoop.setSpeed(this.gameSpeed);

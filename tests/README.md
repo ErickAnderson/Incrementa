@@ -2,21 +2,31 @@
 
 This directory contains comprehensive unit and integration tests for the Incrementa framework. The test suite ensures all core framework features work correctly and provides regression testing for future development.
 
+Current status: 243 tests across 13 suites, all passing.
+
 ## Test Structure
 
 ```
 tests/
-├── README.md                 # This file
-├── setup.ts                  # Global test configuration and utilities
-├── core/                     # Core system tests
-│   └── game.test.ts         # Game class and main orchestration
-├── entities/                 # Entity-specific tests
-│   ├── resource.test.ts     # Resource management and capacity
-│   ├── building.test.ts     # Building construction and lifecycle
-│   ├── storage.test.ts      # Storage capacity management
-│   └── producers.test.ts    # Miner and Factory production
-└── integration/              # Integration and scenario tests
-    └── time-scenarios.test.ts # Time-based production scenarios
+├── README.md                       # This file
+├── setup.ts                        # Global test configuration and utilities
+├── core/                           # Core system tests
+│   ├── game.test.ts                # Game class and main orchestration
+│   ├── game-loop-service.test.ts   # Game loop service
+│   ├── cost-system.test.ts         # Cost validation and scaling
+│   ├── event-system.test.ts        # Event manager and filtering
+│   ├── unlock-conditions.test.ts   # Complex unlock conditions
+│   └── upgrade-effects.test.ts     # Data-driven upgrade effects
+├── entities/                       # Entity-specific tests
+│   ├── resource.test.ts            # Resource management and capacity
+│   ├── building.test.ts            # Building construction and lifecycle
+│   ├── storage.test.ts             # Storage capacity management
+│   └── producers.test.ts           # Miner and Factory production
+├── integration/                    # Integration and scenario tests
+│   ├── service-integration.test.ts # Cross-service integration
+│   └── time-scenarios.test.ts      # Time-based production scenarios
+└── performance/                    # Benchmarking
+    └── benchmark.test.ts           # Performance benchmarks
 ```
 
 ## Test Coverage Overview
