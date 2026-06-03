@@ -1,9 +1,11 @@
-import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 
 export default [
-  js.configs.recommended,
+  {
+    // Not part of the published TypeScript project
+    ignores: ['dist/**', 'src/examples/**']
+  },
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -23,13 +25,17 @@ export default [
         clearInterval: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
-        // Browser globals
+        // Browser / shared globals
         window: 'readonly',
         document: 'readonly',
         HTMLElement: 'readonly',
         HTMLProgressElement: 'readonly',
         Element: 'readonly',
-        console: 'readonly'
+        console: 'readonly',
+        performance: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        globalThis: 'readonly'
       }
     },
     plugins: {

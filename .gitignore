@@ -9,3 +9,5 @@ _internal/
 .idea
 .DS_Store
 CLAUDE.md
+# Claude Code runtime
+.claude/scheduled_tasks.lock

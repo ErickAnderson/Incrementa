@@ -133,7 +133,7 @@ export class ConfigValidator {
         
         if (cfg.unlockCondition !== undefined) {
             if (typeof cfg.unlockCondition === 'function') {
-                result.unlockCondition = cfg.unlockCondition;
+                result.unlockCondition = cfg.unlockCondition as () => boolean;
             } else {
                 warnings.push('Unlock condition should be a function, ignoring invalid value');
             }
@@ -182,18 +182,19 @@ export class ConfigValidator {
             if (Array.isArray(cfg.costs)) {
                 const validCosts = cfg.costs.filter((cost: unknown) => {
                     if (!cost || typeof cost !== 'object') return false;
-                    if (typeof cost.resourceId !== 'string' || cost.resourceId.trim().length === 0) return false;
-                    if (typeof cost.amount !== 'number' || cost.amount < 0) return false;
+                    const c = cost as Record<string, unknown>;
+                    if (typeof c.resourceId !== 'string' || c.resourceId.trim().length === 0) return false;
+                    if (typeof c.amount !== 'number' || c.amount < 0) return false;
                     return true;
-                });
-                
+                }) as Array<Record<string, unknown>>;
+
                 if (validCosts.length !== cfg.costs.length) {
                     warnings.push('Some cost entries were invalid and ignored');
                 }
-                
+
                 result.costs = validCosts.map((cost: Record<string, unknown>) => ({
-                    resourceId: cost.resourceId,
-                    amount: cost.amount,
+                    resourceId: cost.resourceId as string,
+                    amount: cost.amount as number,
                     scalingFactor: typeof cost.scalingFactor === 'number' ? cost.scalingFactor : 1.2
                 }));
             } else {

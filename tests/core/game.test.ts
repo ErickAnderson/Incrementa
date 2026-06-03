@@ -13,9 +13,26 @@ describe('Game Core', () => {
   let saveManager: SaveManager;
 
   beforeEach(() => {
+    // Mock requestAnimationFrame and cancelAnimationFrame for GameLoopService
+    global.requestAnimationFrame = jest.fn((cb) => {
+      setTimeout(cb, 16); // 60fps
+      return 1;
+    });
+    global.cancelAnimationFrame = jest.fn();
+    global.performance = {
+      now: jest.fn(() => Date.now())
+    } as unknown as Performance;
+    
     const mockStorage = createMockStorageProvider();
     saveManager = new SaveManager(mockStorage);
     game = new Game(saveManager);
+  });
+
+  afterEach(() => {
+    if (game) {
+      game.destroy();
+    }
+    jest.clearAllMocks();
   });
 
   describe('Initialization', () => {

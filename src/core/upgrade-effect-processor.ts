@@ -178,45 +178,46 @@ export class UpgradeEffectProcessor {
   /**
    * Get property value from entity using dot notation
    */
-  private getPropertyValue(entity: Record<string, unknown>, propertyPath: string): unknown {
+  private getPropertyValue(entity: object, propertyPath: string): unknown {
     const parts = propertyPath.split('.');
-    let current = entity;
-    
+    let current: unknown = entity;
+
     for (const part of parts) {
       if (current == null || typeof current !== 'object') {
         throw new Error(`Cannot access property '${part}' on ${current}`);
       }
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
-    
+
     return current;
   }
 
   /**
    * Set property value on entity using dot notation
    */
-  private setPropertyValue(entity: Record<string, unknown>, propertyPath: string, value: unknown): void {
+  private setPropertyValue(entity: object, propertyPath: string, value: unknown): void {
     const parts = propertyPath.split('.');
     const lastPart = parts.pop()!;
-    let current = entity;
-    
+    let current = entity as Record<string, unknown>;
+
     for (const part of parts) {
       if (current[part] == null || typeof current[part] !== 'object') {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown>;
     }
-    
+
     current[lastPart] = value;
 
     // Trigger recalculation if entity supports it
-    if (typeof entity.recalculateStats === 'function') {
-      entity.recalculateStats();
+    const target = entity as Record<string, unknown>;
+    if (typeof target.recalculateStats === 'function') {
+      target.recalculateStats();
     }
 
     // Emit property change event
-    if (typeof entity.emit === 'function') {
-      entity.emit('propertyChanged', { 
+    if (typeof target.emit === 'function') {
+      (target.emit as (event: string, data: unknown) => void)('propertyChanged', {
         property: propertyPath, 
         oldValue: current[lastPart], 
         newValue: value 
@@ -336,13 +337,13 @@ export class UpgradeEffectProcessor {
       case 'not_equals':
         return actual !== expected;
       case 'greater_than':
-        return actual > expected;
+        return (actual as number) > (expected as number);
       case 'greater_than_or_equal':
-        return actual >= expected;
+        return (actual as number) >= (expected as number);
       case 'less_than':
-        return actual < expected;
+        return (actual as number) < (expected as number);
       case 'less_than_or_equal':
-        return actual <= expected;
+        return (actual as number) <= (expected as number);
       case 'contains':
         return String(actual).includes(String(expected));
       case 'not_contains':

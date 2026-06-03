@@ -177,7 +177,7 @@ describe('Building Entity', () => {
       expect(building.isBuilding).toBe(true);
 
       // Fast forward time by build time
-      await fastForward(building.buildTime * 1000);
+      building.onUpdate(building.buildTime * 1000); // loop-driven construction
 
       expect(building.isBuilding).toBe(false);
       expect(building.isBuilt).toBe(true);
@@ -232,7 +232,7 @@ describe('Building Entity', () => {
       
       expect(building.isBuilt).toBe(false);
       
-      await fastForward(building.buildTime * 1000);
+      building.onUpdate(building.buildTime * 1000); // loop-driven construction
       
       expect(building.isBuilt).toBe(true);
     });
@@ -315,16 +315,16 @@ describe('Building Entity', () => {
     });
   });
 
-  describe('Timer Integration', () => {
-    test('should handle timer scheduling correctly', async () => {
+  describe('Construction Progress', () => {
+    test('should complete construction via game-loop updates', () => {
       building.startConstruction();
-      
-      // Verify construction timer is active
+
+      // Construction is in progress until enough loop time accumulates
       expect(building.isBuilding).toBe(true);
-      
-      // Complete construction
-      await fastForward(building.buildTime * 1000);
-      
+
+      // Advance construction by the build duration
+      building.onUpdate(building.buildTime * 1000); // loop-driven construction
+
       expect(building.isBuilding).toBe(false);
     });
 

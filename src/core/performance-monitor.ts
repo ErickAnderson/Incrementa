@@ -63,7 +63,7 @@ export class PerformanceMonitor {
     private memoryBaseline: number;
     private lastMemoryCheck: number;
     private thresholds: PerformanceThresholds;
-    private monitoringInterval: NodeJS.Timeout | null;
+    private monitoringInterval: ReturnType<typeof setTimeout> | null;
     private frameTimeWindow: number;
 
     constructor(eventManager: EventManager, options: {
@@ -238,9 +238,11 @@ export class PerformanceMonitor {
             return perf.memory.usedJSHeapSize / 1024 / 1024;
         }
         
-        // Fallback for Node.js
-        if (typeof process !== 'undefined' && process.memoryUsage) {
-            return process.memoryUsage().heapUsed / 1024 / 1024;
+        // Fallback for Node.js (accessed via globalThis to avoid a hard
+        // dependency on Node type definitions)
+        const proc = (globalThis as { process?: { memoryUsage?: () => { heapUsed: number } } }).process;
+        if (proc?.memoryUsage) {
+            return proc.memoryUsage().heapUsed / 1024 / 1024;
         }
         
         return 0;

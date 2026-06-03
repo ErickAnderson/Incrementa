@@ -1,67 +1,60 @@
 {
   "name": "incrementa",
-  "private": true,
   "version": "0.1.0",
   "description": "Incrementa is a JavaScript/TypeScript framework designed to simplify the creation and prototyping of incremental or idle games. The framework provides an abstract, modular set of entities and utilities needed for resource collection, buildings, upgrades, and progression mechanics.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ErickAnderson/Incrementa"
+    "url": "git+https://github.com/ErickAnderson/Incrementa.git"
   },
+  "bugs": {
+    "url": "https://github.com/ErickAnderson/Incrementa/issues"
+  },
+  "homepage": "https://github.com/ErickAnderson/Incrementa#readme",
   "keywords": [
     "incremental game",
     "idle game",
-    "game library"
+    "game library",
+    "typescript",
+    "game framework"
   ],
   "main": "dist/incrementa.umd.cjs",
   "module": "dist/incrementa.js",
-  "types": "dist/**/*.d.ts",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/incrementa.js",
-      "require": "./dist/incrementa.umd.cjs",
-      "types": "./dist/index.d.ts"
-    },
-    "./core": {
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs",
-      "types": "./dist/core/index.d.ts"
-    },
-    "./entities": {
-      "import": "./dist/entities/index.js",
-      "require": "./dist/entities/index.cjs",
-      "types": "./dist/entities/index.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils/index.js",
-      "require": "./dist/utils/index.cjs",
-      "types": "./dist/utils/index.d.ts"
+      "require": "./dist/incrementa.umd.cjs"
     }
   },
   "files": [
     "/dist"
   ],
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "watch": "vite build --watch",
     "build": "vite build && tsc",
     "preview": "vite preview",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@typescript-eslint/eslint-plugin": "^8.34.0",
-    "@typescript-eslint/parser": "^8.34.0",
-    "eslint": "^9.29.0",
-    "jest": "^30.0.0",
-    "jest-environment-node": "^30.0.0",
-    "ts-jest": "^29.4.0",
-    "typescript": "^5.5.3",
-    "vite": "^5.4.8"
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "eslint": "^10.4.1",
+    "jest": "^30.4.2",
+    "jest-environment-node": "^30.4.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
   }
 }

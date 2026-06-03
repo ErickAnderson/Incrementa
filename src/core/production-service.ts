@@ -1,0 +1,437 @@
+import { BaseEntity } from './base-entity';
+import { Building } from '../entities/buildings/building';
+import { logger } from '../utils/logger';
+import type { ProductionConfig, ProductionStats } from '../types/production';
+
+/**
+ * The producer surface this service relies on. Implemented by ProducerBuilding
+ * (Miner, Factory). Used to narrow entities instead of casting to any.
+ */
+interface Producer extends BaseEntity {
+    readonly isProducing: boolean;
+    readonly isBuilt: boolean;
+    startProduction(): boolean;
+    stopProduction(): void;
+    getProductionConfig(): ProductionConfig;
+    getProductionStats(): ProductionStats;
+}
+
+/** Type guard: is this entity a production building? */
+function isProducer(entity: BaseEntity): entity is Producer {
+    return entity instanceof Building && 'startProduction' in entity && 'getProductionConfig' in entity;
+}
+
+/**
+ * Result of production optimization operation
+ */
+export interface ProductionOptimizationResult {
+    /** Number of producers that were started */
+    started: number;
+    /** Number of producers that were stopped */
+    stopped: number;
+    /** List of resource IDs that are bottlenecks */
+    bottlenecks: string[];
+    /** Total number of producers checked */
+    totalChecked: number;
+}
+
+/**
+ * Global production statistics
+ */
+export interface GlobalProductionStats {
+    totalProducers: number;
+    activeProducers: number;
+    totalCyclesCompleted: number;
+    averageEfficiency: number;
+    resourceProductionRates: Record<string, number>;
+    resourceConsumptionRates: Record<string, number>;
+}
+
+/**
+ * Production bottlenecks analysis
+ */
+export interface ProductionBottlenecks {
+    resourceShortages: Array<{resourceId: string, required: number, available: number}>;
+    capacityLimits: Array<{resourceId: string, attempted: number, capacity: number}>;
+    stoppedProducers: string[];
+    blockedProducers: string[];
+}
+
+/**
+ * Interface for the production service
+ */
+export interface IProductionService {
+    // Production control
+    startAllProduction(): BaseEntity[];
+    stopAllProduction(): BaseEntity[];
+    optimizeProduction(): ProductionOptimizationResult;
+    
+    // Producer management
+    getProducerBuildings(): BaseEntity[];
+    getActiveProducers(): BaseEntity[];
+    
+    // Statistics and analysis
+    getGlobalProductionStats(): GlobalProductionStats;
+    getProductionBottlenecks(): ProductionBottlenecks;
+    
+    // Resource validation
+    checkResourceAvailability(inputs: Array<{resourceId: string, amount: number}>): boolean;
+    checkProductionCapacity(outputs: Array<{resourceId: string, amount: number}>): boolean;
+    
+    // Cleanup
+    destroy(): void;
+}
+
+/**
+ * Service responsible for managing all production operations
+ * Extracted from Game class to reduce god class anti-pattern
+ */
+export class ProductionService implements IProductionService {
+    constructor(
+        private getEntities: () => BaseEntity[],
+        private getResourceById: (id: string) => { amount: number } | undefined,
+        private hasGlobalCapacity: (resourceId: string, amount: number) => boolean,
+        private getTotalCapacityFor: (resourceId: string) => number
+    ) {
+        logger.debug('ProductionService: Initialized');
+    }
+
+    /**
+     * Starts production for all producer buildings that can produce
+     */
+    startAllProduction(): BaseEntity[] {
+        const entities = this.getEntities();
+        const started: BaseEntity[] = [];
+
+        for (const entity of entities) {
+            if (isProducer(entity) && entity.isUnlocked && entity.isBuilt) {
+                if (this.canStartProduction(entity)) {
+                    try {
+                        entity.startProduction();
+                        started.push(entity);
+                    } catch (error) {
+                        logger.warn(`ProductionService: Failed to start production for ${entity.name}: ${error}`);
+                    }
+                }
+            }
+        }
+
+        logger.info(`ProductionService: Started production for ${started.length} buildings`);
+        return started;
+    }
+
+    /**
+     * Stops production for all producer buildings
+     */
+    stopAllProduction(): BaseEntity[] {
+        const entities = this.getEntities();
+        const stopped: BaseEntity[] = [];
+
+        for (const entity of entities) {
+            if (isProducer(entity) && entity.isUnlocked) {
+                try {
+                    entity.stopProduction();
+                    stopped.push(entity);
+                } catch (error) {
+                    logger.warn(`ProductionService: Failed to stop production for ${entity.name}: ${error}`);
+                }
+            }
+        }
+
+        logger.info(`ProductionService: Stopped production for ${stopped.length} buildings`);
+        return stopped;
+    }
+
+    /**
+     * Gets all producer buildings in the game
+     */
+    getProducerBuildings(): BaseEntity[] {
+        return this.getEntities().filter(entity => isProducer(entity) && entity.isUnlocked);
+    }
+
+    /**
+     * Gets all currently producing buildings
+     */
+    getActiveProducers(): BaseEntity[] {
+        return this.getProducerBuildings().filter(entity => 
+            'isProducing' in entity && (entity as Producer).isProducing
+        );
+    }
+
+    /**
+     * Gets production statistics across all producer buildings
+     */
+    getGlobalProductionStats(): GlobalProductionStats {
+        const producers = this.getProducerBuildings();
+        const activeProducers = this.getActiveProducers();
+        
+        let totalCyclesCompleted = 0;
+        let totalEfficiency = 0;
+        const resourceProductionRates: Record<string, number> = {};
+        const resourceConsumptionRates: Record<string, number> = {};
+
+        for (const producer of producers) {
+            // Get production statistics if available
+            if ('getProductionStats' in producer) {
+                const stats = (producer as Producer).getProductionStats();
+                if (stats) {
+                    totalCyclesCompleted += stats.totalCycles || 0;
+                    totalEfficiency += stats.averageEfficiency || 0;
+                }
+            }
+
+            // Calculate production rates
+            if ('getProductionConfig' in producer) {
+                const config = (producer as Producer).getProductionConfig();
+                if (config) {
+                    // Track output rates
+                    if (config.outputs) {
+                        for (const output of config.outputs) {
+                            resourceProductionRates[output.resourceId] = 
+                                (resourceProductionRates[output.resourceId] || 0) + output.amount;
+                        }
+                    }
+                    
+                    // Track input rates
+                    if (config.inputs) {
+                        for (const input of config.inputs) {
+                            resourceConsumptionRates[input.resourceId] = 
+                                (resourceConsumptionRates[input.resourceId] || 0) + input.amount;
+                        }
+                    }
+                }
+            }
+        }
+
+        return {
+            totalProducers: producers.length,
+            activeProducers: activeProducers.length,
+            totalCyclesCompleted,
+            averageEfficiency: producers.length > 0 ? totalEfficiency / producers.length : 0,
+            resourceProductionRates,
+            resourceConsumptionRates
+        };
+    }
+
+    /**
+     * Checks resource availability for a specific production requirement
+     */
+    checkResourceAvailability(inputs: Array<{resourceId: string, amount: number}>): boolean {
+        return inputs.every(input => {
+            const resource = this.getResourceById(input.resourceId);
+            return resource && resource.amount >= input.amount;
+        });
+    }
+
+    /**
+     * Checks production capacity for a specific output
+     */
+    checkProductionCapacity(outputs: Array<{resourceId: string, amount: number}>): boolean {
+        return outputs.every(output => 
+            this.hasGlobalCapacity(output.resourceId, output.amount)
+        );
+    }
+
+    /**
+     * Gets production bottlenecks - resources that are limiting production
+     */
+    getProductionBottlenecks(): ProductionBottlenecks {
+        const resourceShortages: Array<{resourceId: string, required: number, available: number}> = [];
+        const capacityLimits: Array<{resourceId: string, attempted: number, capacity: number}> = [];
+        const stoppedProducers: string[] = [];
+        const blockedProducers: string[] = [];
+
+        const producers = this.getProducerBuildings();
+
+        for (const producer of producers) {
+            if (!('isProducing' in producer) || !('getProductionConfig' in producer)) {
+                continue;
+            }
+
+            const isProducing = (producer as Producer).isProducing;
+            const config = (producer as Producer).getProductionConfig();
+
+            if (!isProducing) {
+                stoppedProducers.push(producer.id);
+                
+                if (config) {
+                    // Check for resource shortages
+                    if (config.inputs) {
+                        for (const input of config.inputs) {
+                            const resource = this.getResourceById(input.resourceId);
+                            if (!resource || resource.amount < input.amount) {
+                                resourceShortages.push({
+                                    resourceId: input.resourceId,
+                                    required: input.amount,
+                                    available: resource?.amount || 0
+                                });
+                            }
+                        }
+                    }
+
+                    // Check for capacity issues
+                    if (config.outputs) {
+                        for (const output of config.outputs) {
+                            if (!this.hasGlobalCapacity(output.resourceId, output.amount)) {
+                                blockedProducers.push(producer.id);
+                                capacityLimits.push({
+                                    resourceId: output.resourceId,
+                                    attempted: output.amount,
+                                    capacity: this.getTotalCapacityFor(output.resourceId)
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return {
+            resourceShortages,
+            capacityLimits,
+            stoppedProducers,
+            blockedProducers
+        };
+    }
+
+    /**
+     * Optimizes production by starting/stopping producers based on resource availability
+     */
+    optimizeProduction(): ProductionOptimizationResult {
+        const producers = this.getProducerBuildings();
+        let started = 0;
+        let stopped = 0;
+        const bottlenecks: string[] = [];
+
+        for (const producer of producers) {
+            if (!('isProducing' in producer)) continue;
+
+            const isProducing = (producer as Producer).isProducing;
+
+            if (!isProducing && this.canStartProduction(producer as Producer)) {
+                try {
+                    (producer as Producer).startProduction();
+                    started++;
+                } catch (error) {
+                    logger.warn(`ProductionService: Failed to start production for ${producer.name}: ${error}`);
+                }
+            } else if (isProducing && !this.canContinueProduction(producer as Producer)) {
+                try {
+                    (producer as Producer).stopProduction();
+                    stopped++;
+                    bottlenecks.push(...this.getProductionIssues(producer as Producer));
+                } catch (error) {
+                    logger.warn(`ProductionService: Failed to stop production for ${producer.name}: ${error}`);
+                }
+            }
+        }
+
+        logger.debug(`ProductionService: Optimization complete - started: ${started}, stopped: ${stopped}`);
+        return {
+            started,
+            stopped,
+            bottlenecks: [...new Set(bottlenecks)], // Remove duplicates
+            totalChecked: producers.length
+        };
+    }
+
+    /**
+     * Checks if a producer can start production
+     */
+    private canStartProduction(producer: Producer): boolean {
+        if (!producer.isBuilt) {
+            return false;
+        }
+
+        const config = producer.getProductionConfig?.();
+        if (!config) {
+            return true; // No config means no restrictions
+        }
+
+        // Check input resource availability
+        if (config.inputs && !this.hasInputResources(producer)) {
+            return false;
+        }
+
+        // Check output capacity
+        if (config.outputs && !this.hasOutputCapacity(producer)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks if a producer can continue production
+     */
+    private canContinueProduction(producer: Producer): boolean {
+        return this.canStartProduction(producer);
+    }
+
+    /**
+     * Checks if producer has required input resources
+     */
+    private hasInputResources(producer: Producer): boolean {
+        const config = producer.getProductionConfig?.();
+        if (!config?.inputs) {
+            return true; // No inputs required
+        }
+
+        return config.inputs.every((input) => {
+            const resource = this.getResourceById(input.resourceId);
+            return resource && resource.amount >= input.amount;
+        });
+    }
+
+    /**
+     * Checks if producer has capacity for outputs
+     */
+    private hasOutputCapacity(producer: Producer): boolean {
+        const config = producer.getProductionConfig?.();
+        if (!config?.outputs) {
+            return true; // No outputs produced
+        }
+
+        return config.outputs.every((output) => {
+            return this.hasGlobalCapacity(output.resourceId, output.amount);
+        });
+    }
+
+    /**
+     * Gets a list of issues preventing a producer from operating
+     */
+    private getProductionIssues(producer: Producer): string[] {
+        const issues: string[] = [];
+        const config = producer.getProductionConfig?.();
+
+        if (config) {
+            // Check for resource shortages
+            if (config.inputs) {
+                for (const input of config.inputs) {
+                    const resource = this.getResourceById(input.resourceId);
+                    if (!resource || resource.amount < input.amount) {
+                        issues.push(input.resourceId);
+                    }
+                }
+            }
+
+            // Check for capacity issues
+            if (config.outputs) {
+                for (const output of config.outputs) {
+                    if (!this.hasGlobalCapacity(output.resourceId, output.amount)) {
+                        issues.push(output.resourceId);
+                    }
+                }
+            }
+        }
+
+        return issues;
+    }
+
+    /**
+     * Cleanup method to release resources
+     */
+    destroy(): void {
+        logger.info('ProductionService: Destroyed');
+    }
+}

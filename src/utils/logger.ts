@@ -120,7 +120,7 @@ export class FileDriver implements LoggerDriver {
 
     private scheduleTimer(callback: () => void, delay: number): number {
         if (typeof (globalThis as unknown as { setTimeout?: typeof setTimeout }).setTimeout === 'function') {
-            return (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout(callback, delay);
+            return (globalThis as unknown as { setTimeout: typeof setTimeout }).setTimeout(callback, delay) as unknown as number;
         } else {
             callback();
             return 0;

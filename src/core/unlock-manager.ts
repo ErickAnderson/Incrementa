@@ -9,7 +9,8 @@ import type {
   UnlockMilestone,
   UnlockEventType,
   UnlockEvent,
-  UnlockManagerStats
+  UnlockManagerStats,
+  UnlockConditionType
 } from "../types/unlock-conditions";
 import type { Game } from "./game";
 
@@ -177,8 +178,8 @@ export class UnlockManager {
                 // Handle new data-driven conditions
                 else if (entry.complexCondition && this.conditionEvaluator && this.game) {
                     const context = {
-                        game: this.game,
-                        entity: entry.entity,
+                        game: this.game as unknown as Record<string, unknown>,
+                        entity: entry.entity as unknown as Record<string, unknown>,
                         timestamp: Date.now()
                     };
                     
@@ -389,7 +390,7 @@ export class UnlockManager {
             conditionsMet: this.unlockedEntities.size,
             entitiesUnlocked: this.unlockedEntities.size,
             milestonesAchieved: Array.from(this.milestones.values()).filter(m => m.isAchieved).length,
-            commonConditionTypes: this.getCommonConditionTypes(),
+            commonConditionTypes: this.getCommonConditionTypes() as UnlockConditionType[],
             averageUnlockTime: this.calculateAverageUnlockTime(),
             totalEvaluationTime: 0
         };
@@ -450,7 +451,7 @@ export class UnlockManager {
             if (milestone.isAchieved) continue;
             
             const context = {
-                game: this.game,
+                game: this.game as unknown as Record<string, unknown>,
                 entity: null,
                 timestamp: Date.now()
             };
@@ -463,14 +464,15 @@ export class UnlockManager {
             if (result.isMet) {
                 milestone.isAchieved = true;
                 milestone.achievedAt = Date.now();
-                
-                this._emitEvent('milestoneAchieved', { milestone });
-                logger.info(`Milestone achieved: ${milestone.name}`);
-                
-                // Apply reward if present
+
+                // Apply the reward before announcing achievement so listeners
+                // observe the already-applied state.
                 if (milestone.reward) {
                     this.applyMilestoneReward(milestone);
                 }
+
+                this._emitEvent('milestoneAchieved', { milestone });
+                logger.info(`Milestone achieved: ${milestone.name}`);
             }
         }
     }
@@ -565,9 +567,32 @@ export class UnlockManager {
     }
     
     private applyMilestoneReward(milestone: UnlockMilestone): void {
-        // Simplified reward application
-        // In a real implementation, this would apply the specific reward
-        logger.info(`Applying reward for milestone: ${milestone.name}`);
+        const reward = milestone.reward;
+        if (!reward || !this.game) {
+            return;
+        }
+
+        switch (reward.type) {
+            case 'resource': {
+                if (typeof reward.value === 'number') {
+                    const resource = this.game.getResourceById(reward.target);
+                    if (resource) {
+                        resource.increment(reward.value); // respects storage capacity like all gains
+                        logger.info(`Milestone reward applied: +${reward.value} ${reward.target} (${milestone.name})`);
+                        return;
+                    }
+                }
+                logger.warn(`Milestone reward for '${milestone.name}' could not be applied to resource '${reward.target}'`);
+                break;
+            }
+            case 'unlock': {
+                this.game.unlockEntity(reward.target);
+                logger.info(`Milestone reward unlocked '${reward.target}' (${milestone.name})`);
+                break;
+            }
+            default:
+                logger.info(`Milestone reward type '${reward.type}' for '${milestone.name}' is not automatically applied`);
+        }
     }
     
     private _emitEvent(type: UnlockEventType, data: Record<string, unknown>): void {

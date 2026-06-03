@@ -70,10 +70,11 @@ export class UIIntegration {
      */
     bindEntityToUI(entity: BaseEntity, eventName: string, callback: UIUpdateCallback): void {
         entity.on(eventName, (data) => {
+            const payload = (data ?? {}) as Record<string, unknown>;
             if (this.config.batchUpdates) {
-                this.queueUpdate(`${entity.id}-${eventName}`, callback, data);
+                this.queueUpdate(`${entity.id}-${eventName}`, callback, payload);
             } else {
-                callback(entity, data);
+                callback(entity, payload);
             }
         });
 
@@ -122,7 +123,7 @@ export class UIIntegration {
         for (const mapping of mappings) {
             this.game.getEventManager().on(mapping.eventName, (data) => {
                 const elements = document.querySelectorAll(mapping.selector);
-                const content = mapping.updateFunction(data);
+                const content = mapping.updateFunction((data ?? {}) as Record<string, unknown>);
                 
                 elements.forEach(element => {
                     if (mapping.useInnerHTML) {
@@ -151,8 +152,8 @@ export class UIIntegration {
         element: HTMLProgressElement
     ): void {
         const updateProgress = () => {
-            const current = this.getNestedProperty(entity, progressProperty) || 0;
-            const max = this.getNestedProperty(entity, maxProperty) || 1;
+            const current = Number(this.getNestedProperty(entity, progressProperty)) || 0;
+            const max = Number(this.getNestedProperty(entity, maxProperty)) || 1;
             
             element.value = current;
             element.max = max;
@@ -213,15 +214,15 @@ export class UIIntegration {
 
         // Listen for common entity events
         this.game.getEventManager().on('entityUnlocked', (data) => {
-            showNotification(`${data.entity.name} unlocked!`, 'success');
+            showNotification(`${(data as { entity: { name: string } }).entity.name} unlocked!`, 'success');
         });
 
         this.game.getEventManager().on('buildingCompleted', (data) => {
-            showNotification(`${data.building.name} construction completed!`, 'success');
+            showNotification(`${(data as { building: { name: string } }).building.name} construction completed!`, 'success');
         });
 
         this.game.getEventManager().on('resourceCapacityExceeded', (data) => {
-            showNotification(`${data.resourceId} storage full!`, 'warning');
+            showNotification(`${(data as { resourceId: string }).resourceId} storage full!`, 'warning');
         });
 
         logger.info('UIIntegration: Notification system created');
@@ -293,7 +294,7 @@ export class UIIntegration {
     private processBatchedUpdates(): void {
         for (const [key, { callback, data }] of this.updateQueue) {
             try {
-                callback(data.entity || data, data);
+                callback((data.entity ?? data) as unknown as BaseEntity, data);
             } catch (error) {
                 logger.error(`UIIntegration: Error processing UI update for ${key}: ${error}`);
             }
@@ -301,8 +302,11 @@ export class UIIntegration {
         this.updateQueue.clear();
     }
 
-    private getNestedProperty(obj: Record<string, unknown>, path: string): unknown {
-        return path.split('.').reduce((current, prop) => current?.[prop], obj);
+    private getNestedProperty(obj: object, path: string): unknown {
+        return path.split('.').reduce<unknown>(
+            (current, prop) => (current == null ? undefined : (current as Record<string, unknown>)[prop]),
+            obj
+        );
     }
 
     private createDefaultNotification(message: string, type: string): HTMLElement {

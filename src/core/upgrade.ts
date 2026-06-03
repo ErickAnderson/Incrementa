@@ -34,7 +34,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
     currentApplications: number;
     
     // Legacy support
-    effect?: Record<string, unknown>;
+    effect?: (() => void) | Record<string, unknown>;
     cost?: Record<string, number>;
 
     /**
@@ -58,7 +58,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         configuration?: UpgradeConfiguration;
         costs?: CostDefinition[];
         cost?: Record<string, number>; // Legacy support
-        effect?: Record<string, unknown>; // Legacy support
+        effect?: (() => void) | Record<string, unknown>; // Legacy support
         isRepeatable?: boolean;
         maxApplications?: number;
         unlockCondition?: () => boolean;
@@ -207,7 +207,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         
         // Check prerequisites if defined
         if (this.configuration.prerequisites && this._game?.upgradeEffectProcessor) {
-            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this as unknown);
+            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this);
         }
         
         return true;
@@ -352,6 +352,31 @@ export class Upgrade extends BaseEntity implements CostProvider {
      * Gets the game reference
      */
     get game(): Game | undefined {
-        return this._game;
+        return this._game as Game | undefined;
+    }
+
+    /**
+     * Serializes the upgrade's application state on top of the base entity
+     * data, so save/load restores how many times it has been applied.
+     */
+    getSaveData(): Record<string, unknown> {
+        return {
+            ...super.getSaveData(),
+            currentApplications: this.currentApplications,
+            isApplied: this.isApplied
+        };
+    }
+
+    /**
+     * Restores upgrade application state from saved data.
+     */
+    loadSaveData(saveData: Record<string, unknown>): void {
+        super.loadSaveData(saveData);
+        if (typeof saveData.currentApplications === 'number') {
+            this.currentApplications = saveData.currentApplications;
+        }
+        if (typeof saveData.isApplied === 'boolean') {
+            this.isApplied = saveData.isApplied;
+        }
     }
 }

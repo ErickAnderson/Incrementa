@@ -9,7 +9,7 @@ import type { Game } from "../../core/game";
  * Implements PRD Building specification with construction lifecycle and level system.
  *
  * @property {CostDefinition[]} costs - Structured cost definitions for building construction.
- * @property {number} buildTime - Time required to build the building.
+ * @property {number} buildTime - Time required to build the building, in seconds.
  * @property {number} productionRate - Rate at which the building produces or mines resources.
  * @property {number} level - Current level of the building.
  * @property {boolean} isBuilding - Whether construction is in progress.
@@ -24,7 +24,7 @@ export class Building extends BaseEntity implements CostProvider {
     level: number;
     isBuilding: boolean;
     upgradesApplied: Upgrade[];
-    private constructionTimerId: number | null;
+    private _constructionElapsed: number;
     private _constructionCompleted: boolean;
 
     /**
@@ -83,7 +83,7 @@ export class Building extends BaseEntity implements CostProvider {
         this.level = config.level || 1;
         this.isBuilding = false;
         this.upgradesApplied = [];
-        this.constructionTimerId = null;
+        this._constructionElapsed = 0;
         // Property to track construction completion state for internal lifecycle management
         // This is needed to differentiate between "never built" and "construction completed" states
         this._constructionCompleted = false;
@@ -152,14 +152,14 @@ export class Building extends BaseEntity implements CostProvider {
         }
         
         this.isBuilding = true;
+        this._constructionElapsed = 0;
         this.onBuildStart();
-        
-        // Schedule construction completion with environment-agnostic timer
-        const delayMs = this.buildTime * 1000;
-        this.constructionTimerId = this.scheduleTimer(() => {
+
+        // Instant build when no build time is configured.
+        if (this.buildTime <= 0) {
             this.completeConstruction();
-        }, delayMs);
-        
+        }
+
         return true;
     }
 
@@ -173,11 +173,24 @@ export class Building extends BaseEntity implements CostProvider {
         
         this.isBuilding = false;
         this._constructionCompleted = true;
-        if (this.constructionTimerId !== null) {
-            this.clearTimer(this.constructionTimerId);
-            this.constructionTimerId = null;
-        }
+        this._constructionElapsed = 0;
         this.onBuildComplete();
+    }
+
+    /**
+     * Advances construction using the game loop's delta time, so building
+     * progress respects game speed and pauses with the game. Subclasses that
+     * override onUpdate (e.g. ProducerBuilding) call super.onUpdate first.
+     * @param deltaTime - Time elapsed since the last update, in milliseconds
+     */
+    onUpdate(deltaTime: number): void {
+        super.onUpdate(deltaTime);
+        if (this.isBuilding) {
+            this._constructionElapsed += deltaTime;
+            if (this._constructionElapsed >= this.buildTime * 1000) {
+                this.completeConstruction();
+            }
+        }
     }
 
     /**
@@ -269,7 +282,7 @@ export class Building extends BaseEntity implements CostProvider {
             // Fallback validation if no cost system available
             const calculatedCosts = this.calculateCost(options);
             for (const [resourceId, requiredAmount] of Object.entries(calculatedCosts)) {
-                const resource = this._game?.getResourceById(resourceId);
+                const resource = this._game?.getResourceById?.(resourceId);
                 if (!resource || resource.amount < requiredAmount) {
                     return false;
                 }
@@ -358,7 +371,7 @@ export class Building extends BaseEntity implements CostProvider {
      * Gets the game reference
      */
     get game(): Game | undefined {
-        return this._game;
+        return this._game as Game | undefined;
     }
 
     /**
@@ -378,28 +391,31 @@ export class Building extends BaseEntity implements CostProvider {
     }
 
     /**
-     * Environment-agnostic timer scheduling
-     * Uses setTimeout in environments that support it,
-     * otherwise calls the callback immediately
-     * @private
+     * Serializes the building's persistent state (level and construction state)
+     * on top of the base entity data, so save/load restores the full building.
      */
-    private scheduleTimer(callback: () => void, delay: number): number {
-        if (typeof (globalThis as { setTimeout?: (callback: () => void, delay: number) => number }).setTimeout === 'function') {
-            return ((globalThis as { setTimeout: (callback: () => void, delay: number) => number }).setTimeout(callback, delay) as unknown) as number;
-        } else {
-            // Fallback for environments without setTimeout
-            callback();
-            return 0;
-        }
+    getSaveData(): Record<string, unknown> {
+        return {
+            ...super.getSaveData(),
+            level: this.level,
+            isBuilding: this.isBuilding,
+            constructionCompleted: this._constructionCompleted
+        };
     }
 
     /**
-     * Environment-agnostic timer clearing
-     * @private
+     * Restores building level and construction state from saved data.
      */
-    private clearTimer(timerId: number): void {
-        if (typeof (globalThis as { clearTimeout?: (timerId: number) => void }).clearTimeout === 'function') {
-            (globalThis as { clearTimeout: (timerId: number) => void }).clearTimeout(timerId);
+    loadSaveData(saveData: Record<string, unknown>): void {
+        super.loadSaveData(saveData);
+        if (typeof saveData.level === 'number') {
+            this.level = saveData.level;
+        }
+        if (typeof saveData.isBuilding === 'boolean') {
+            this.isBuilding = saveData.isBuilding;
+        }
+        if (typeof saveData.constructionCompleted === 'boolean') {
+            this._constructionCompleted = saveData.constructionCompleted;
         }
     }
 
