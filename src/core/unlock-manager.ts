@@ -566,9 +566,32 @@ export class UnlockManager {
     }
     
     private applyMilestoneReward(milestone: UnlockMilestone): void {
-        // Simplified reward application
-        // In a real implementation, this would apply the specific reward
-        logger.info(`Applying reward for milestone: ${milestone.name}`);
+        const reward = milestone.reward;
+        if (!reward || !this.game) {
+            return;
+        }
+
+        switch (reward.type) {
+            case 'resource': {
+                if (typeof reward.value === 'number') {
+                    const resource = this.game.getResourceById(reward.target);
+                    if (resource) {
+                        resource.increment(reward.value, false); // reward bypasses capacity
+                        logger.info(`Milestone reward applied: +${reward.value} ${reward.target} (${milestone.name})`);
+                        return;
+                    }
+                }
+                logger.warn(`Milestone reward for '${milestone.name}' could not be applied to resource '${reward.target}'`);
+                break;
+            }
+            case 'unlock': {
+                this.game.unlockEntity(reward.target);
+                logger.info(`Milestone reward unlocked '${reward.target}' (${milestone.name})`);
+                break;
+            }
+            default:
+                logger.info(`Milestone reward type '${reward.type}' for '${milestone.name}' is not automatically applied`);
+        }
     }
     
     private _emitEvent(type: UnlockEventType, data: Record<string, unknown>): void {

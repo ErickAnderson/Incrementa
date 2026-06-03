@@ -337,14 +337,18 @@ export class Game implements IGame {
     // ==========================================
 
     private wireServices(): void {
-        this.gameLoop.onUpdate((deltaTime) => {
+        this.gameLoop.onUpdate((deltaTimeSeconds) => {
+            // The game loop reports delta time in seconds. Entity update hooks
+            // (BaseEntity.onUpdate, producer ticks) and plugins use milliseconds
+            // by contract, while resource generation rates are per second.
+            const deltaMs = deltaTimeSeconds * 1000;
             this.performanceMonitor.recordFrameTime();
-            this.updateEntities(deltaTime);
-            this.timers.updateTimers(deltaTime);
+            this.updateEntities(deltaMs);
+            this.timers.updateTimers(deltaMs);
             this.unlocks.checkConditions();
             this.production.optimizeProduction();
-            this.pluginSystem.updatePlugins(deltaTime);
-            this.updateResources(deltaTime);
+            this.pluginSystem.updatePlugins(deltaMs);
+            this.updateResources(deltaTimeSeconds);
         });
 
         // Storage capacity depends on which storages are built; invalidate the

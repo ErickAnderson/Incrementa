@@ -1,0 +1,13 @@
+{
+  "name": "incrementa-e2e-sim",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless end-to-end simulation that exercises every Incrementa subsystem against the published package.",
+  "scripts": {
+    "start": "node sim.mjs"
+  },
+  "dependencies": {
+    "incrementa": "file:../.."
+  }
+}

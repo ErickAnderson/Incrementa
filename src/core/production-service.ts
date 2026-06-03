@@ -238,7 +238,7 @@ export class ProductionService implements IProductionService {
                 continue;
             }
 
-            const isProducing = (producer as any).isProducing();
+            const isProducing = (producer as any).isProducing;
             const config = (producer as any).getProductionConfig();
 
             if (!isProducing) {
