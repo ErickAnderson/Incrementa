@@ -36,8 +36,7 @@ import {
   setDebugMode,
   PluginSystem,
   PerformanceMonitor,
-  EventBatchingSystem,
-  createConfigBuilder
+  EventBatchingSystem
 } from "incrementa";
 
 // Initialize framework with custom configuration
@@ -63,31 +62,60 @@ const gameState = {
  * Demonstrates the plugin system by tracking detailed production statistics
  */
 class ProductionStatsPlugin {
-  constructor(game) {
-    this.game = game;
+  constructor() {
+    this.config = {
+      id: 'production-stats',
+      name: 'Production Statistics Tracker',
+      version: '1.0.0',
+      author: 'Incrementa Framework',
+      description: 'Tracks and displays production statistics'
+    };
+    
+    this.game = null;
+    this.eventManager = null;
     this.stats = {
       totalProduced: {},
       productionRates: {},
       efficiency: {}
     };
+    this.updateInterval = null;
   }
 
-  onRegister() {
-    console.log("🔌 Production Stats Plugin registered");
+  onLoad(game, eventManager) {
+    console.log("🔌 Production Stats Plugin loaded");
+    this.game = game;
+    this.eventManager = eventManager;
     
     // Listen to production events
-    this.game.eventManager.on('resourceProduced', (data) => {
+    this.eventManager.on('resourceProduced', (data) => {
       const { resourceId, amount, producerId } = data;
       if (!this.stats.totalProduced[resourceId]) {
         this.stats.totalProduced[resourceId] = 0;
       }
       this.stats.totalProduced[resourceId] += amount;
     });
+  }
 
+  onActivate() {
+    console.log("🔌 Production Stats Plugin activated");
+    
     // Update production display periodically
-    setInterval(() => {
+    this.updateInterval = setInterval(() => {
       this.updateProductionDisplay();
     }, 2000);
+  }
+
+  onDeactivate() {
+    console.log("🔌 Production Stats Plugin deactivated");
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+  }
+
+  onUnload() {
+    console.log("🔌 Production Stats Plugin unloaded");
+    this.onDeactivate();
   }
 
   updateProductionDisplay() {
@@ -130,12 +158,16 @@ class ProductionStatsPlugin {
   }
 
   calculateActualRate(building) {
+    const buildingLevel = building.level || 1;
+    
     if (building instanceof Miner) {
-      return building.gatherRate;
+      // For the new Miner system, gatherRate already includes level scaling
+      return building.gatherRate || 0;
     } else if (building instanceof Factory) {
-      return building.productionConfig?.rate?.base || 0;
+      const baseRate = building.productionConfig?.rate?.base || building.productionRate || 0;
+      return baseRate * buildingLevel;
     }
-    return building.productionRate || 0;
+    return (building.productionRate || 0) * buildingLevel;
   }
 
   getResourceForBuilding(building) {
@@ -169,8 +201,8 @@ function initializeGame() {
   gameState.game = new Game(saveManager);
 
   // Register custom plugin to showcase plugin system
-  const productionPlugin = new ProductionStatsPlugin(gameState.game);
-  gameState.game.pluginSystem.register('production-stats', productionPlugin);
+  const productionPlugin = new ProductionStatsPlugin();
+  gameState.game.pluginSystem.registerPlugin(productionPlugin);
   gameState.plugins.productionStats = productionPlugin;
 
   // Initialize all game systems
@@ -201,43 +233,34 @@ function initializeGame() {
 function setupResources() {
   console.log("Setting up resources...");
 
-  // Use ConfigBuilder for validation
-  const resourceBuilder = createConfigBuilder('resource');
-
   // Ore - Basic raw material
-  gameState.resources.ore = gameState.game.createResource(
-    resourceBuilder
-      .withId('ore')
-      .withName('Ore')
-      .withDescription('Raw material extracted from the depths. Used to create Metal.')
-      .withInitialAmount(0)
-      .withTags(['raw-material'])
-      .build()
-  );
+  gameState.resources.ore = gameState.game.createResource({
+    id: 'ore',
+    name: 'Ore',
+    description: 'Raw material extracted from the depths. Used to create Metal.',
+    initialAmount: 0,
+    tags: ['raw-material']
+  });
 
   // Metal - Refined resource
-  gameState.resources.metal = gameState.game.createResource(
-    resourceBuilder
-      .withId('metal')
-      .withName('Metal')
-      .withDescription('Refined Ore ready for advanced construction.')
-      .withInitialAmount(0)
-      .withUnlockCondition(() => gameState.resources.ore.amount >= 5)
-      .withTags(['refined-material'])
-      .build()
-  );
+  gameState.resources.metal = gameState.game.createResource({
+    id: 'metal',
+    name: 'Metal',
+    description: 'Refined Ore ready for advanced construction.',
+    initialAmount: 0,
+    unlockCondition: () => gameState.resources.ore.amount >= 5,
+    tags: ['refined-material']
+  });
 
   // Energy - Late-game resource
-  gameState.resources.energy = gameState.game.createResource(
-    resourceBuilder
-      .withId('energy')
-      .withName('Energy')
-      .withDescription('Pure energy condensed from Metal. Required for the Deepcore Reactor.')
-      .withInitialAmount(0)
-      .withUnlockCondition(() => gameState.resources.metal.amount >= 20)
-      .withTags(['energy'])
-      .build()
-  );
+  gameState.resources.energy = gameState.game.createResource({
+    id: 'energy',
+    name: 'Energy',
+    description: 'Pure energy condensed from Metal. Required for the Deepcore Reactor.',
+    initialAmount: 0,
+    unlockCondition: () => gameState.resources.metal.amount >= 20,
+    tags: ['energy']
+  });
 
   // Set up real-time UI updates using event batching
   Object.values(gameState.resources).forEach((resource) => {
@@ -256,8 +279,6 @@ function setupResources() {
 function setupBuildings() {
   console.log("Setting up buildings...");
 
-  const buildingBuilder = createConfigBuilder('building');
-
   // Miner - Showcases automatic resource extraction
   gameState.buildings.miner = gameState.game.createMiner({
     id: "miner",
@@ -272,10 +293,11 @@ function setupBuildings() {
     autoStart: false,
     unlockCondition: () => gameState.resources.ore.amount >= 5,
     tags: ["production", "ore-generator"],
+    efficiency: 1.0
   });
 
   // Smelter - Showcases Factory conversion mechanics
-  gameState.buildings.smelter = gameState.game.createFactory({
+  gameState.buildings.smelter = new Factory({
     id: "smelter",
     name: "Smelter", 
     description: "Refines raw Ore into valuable Metal.",
@@ -290,9 +312,11 @@ function setupBuildings() {
     unlockCondition: () => gameState.resources.ore.amount >= 15,
     tags: ["production", "conversion"],
   });
+  gameState.buildings.smelter.setGameReference(gameState.game);
+  gameState.game.addEntity(gameState.buildings.smelter);
 
   // Power Core - Advanced Factory with multiple costs
-  gameState.buildings.powerCore = gameState.game.createFactory({
+  gameState.buildings.powerCore = new Factory({
     id: "power-core",
     name: "Power Core",
     description: "Advanced facility that transforms Metal into pure Energy.",
@@ -308,6 +332,8 @@ function setupBuildings() {
     unlockCondition: () => gameState.resources.metal.amount >= 10,
     tags: ["production", "energy-generation"],
   });
+  gameState.buildings.powerCore.setGameReference(gameState.game);
+  gameState.game.addEntity(gameState.buildings.powerCore);
 
   // Storage Unit - Showcases capacity management
   gameState.buildings.storage = gameState.game.createStorage({
@@ -360,6 +386,34 @@ function setupBuildings() {
       // Start production for production buildings
       if (typeof data.building.startProduction === 'function') {
         data.building.startProduction();
+        console.log(`🔄 Started production for ${data.building.name}`);
+      }
+      
+      // Apply building-specific initialization
+      if (data.building instanceof Miner) {
+        // Set initial production rate based on level
+        const baseRate = 2; // Original gather rate
+        const newRate = baseRate * data.building.level;
+        data.building.setGatherRate(newRate);
+        console.log(`⛏️ Miner ${data.building.name} gather rate set to ${newRate}/sec`);
+        
+      } else if (data.building instanceof Storage) {
+        // Set initial storage capacities based on level
+        const baseCapacities = {
+          ore: 100,
+          metal: 50,
+          energy: 25
+        };
+        
+        for (const [resourceId, baseCapacity] of Object.entries(baseCapacities)) {
+          const initialCapacity = baseCapacity * data.building.level;
+          data.building.setCapacityFor(resourceId, initialCapacity);
+          console.log(`📦 Storage ${data.building.name} set ${resourceId} capacity to ${initialCapacity}`);
+        }
+        
+      } else if (data.building instanceof Factory) {
+        // Ensure factory production rate is set correctly
+        console.log(`🏭 Factory ${data.building.name} production initialized`);
       }
       
       updateBuildingDisplay();
@@ -392,7 +446,7 @@ function setupUpgrades() {
   console.log("Setting up upgrades...");
 
   // Drill Efficiency - Showcases upgrade effects on production
-  gameState.upgrades.drillEfficiency = gameState.game.createUpgrade({
+  gameState.upgrades.drillEfficiency = new Upgrade({
     id: "drill-efficiency",
     name: "Drill Efficiency",
     description: "Improves mining equipment, increasing Ore production by 50%.",
@@ -402,6 +456,7 @@ function setupUpgrades() {
     ]),
     unlockCondition: () => {
       return (
+        gameState.buildings.miner.isBuilt &&
         gameState.buildings.miner.level >= 2 &&
         gameState.resources.metal.amount >= 5
       );
@@ -416,9 +471,11 @@ function setupUpgrades() {
     },
     tags: ["production", "efficiency"],
   });
+  gameState.upgrades.drillEfficiency.setGameReference(gameState.game);
+  gameState.game.addEntity(gameState.upgrades.drillEfficiency);
 
   // Smelting Speed - Showcases Factory rate modification
-  gameState.upgrades.smeltingSpeed = gameState.game.createUpgrade({
+  gameState.upgrades.smeltingSpeed = new Upgrade({
     id: "smelting-speed",
     name: "Smelting Speed",
     description: "Advanced furnace technology increases Metal production by 40%.",
@@ -428,7 +485,7 @@ function setupUpgrades() {
     ]),
     unlockCondition: () => {
       return (
-        gameState.buildings.smelter.level >= 1 &&
+        gameState.buildings.smelter.isBuilt &&
         gameState.resources.metal.amount >= 15
       );
     },
@@ -442,9 +499,11 @@ function setupUpgrades() {
     },
     tags: ["production", "efficiency"],
   });
+  gameState.upgrades.smeltingSpeed.setGameReference(gameState.game);
+  gameState.game.addEntity(gameState.upgrades.smeltingSpeed);
 
   // Storage Optimization - Showcases capacity upgrades
-  gameState.upgrades.storageOptimization = gameState.game.createUpgrade({
+  gameState.upgrades.storageOptimization = new Upgrade({
     id: "storage-optimization",
     name: "Storage Optimization",
     description: "Better organization doubles the capacity of all Storage Units.",
@@ -455,7 +514,7 @@ function setupUpgrades() {
     ]),
     unlockCondition: () => {
       return (
-        gameState.buildings.storage.level >= 1 &&
+        gameState.buildings.storage.isBuilt &&
         gameState.resources.energy.amount >= 5
       );
     },
@@ -472,6 +531,8 @@ function setupUpgrades() {
     },
     tags: ["infrastructure", "capacity"],
   });
+  gameState.upgrades.storageOptimization.setGameReference(gameState.game);
+  gameState.game.addEntity(gameState.upgrades.storageOptimization);
 
   // Listen for upgrade events
   Object.values(gameState.upgrades).forEach((upgrade) => {
@@ -538,19 +599,145 @@ function mineOre() {
 }
 
 /**
+ * Calculate the current production rate for a resource
+ * Manually calculates based on active buildings and their levels
+ */
+function calculateProductionRate(resourceId) {
+  let totalRate = 0;
+  
+  // Check all buildings for production/consumption of this resource
+  Object.values(gameState.buildings).forEach(building => {
+    if (!building.isBuilt) return;
+    
+    const buildingLevel = building.level || 1;
+    
+    // Check miners - they produce resources directly
+    if (building instanceof Miner && building.resourceId === resourceId) {
+      // For the new production system, miners scale production with level automatically
+      // The gatherRate already includes level scaling via setGatherRate
+      totalRate += building.gatherRate || 0;
+    }
+    
+    // Check factories
+    if (building instanceof Factory) {
+      // For factories, check if they're actually producing
+      if (building.isCurrentlyProducing && building.isCurrentlyProducing()) {
+        // Check outputs
+        const outputs = building.productionConfig?.outputs || building.outputs || [];
+        outputs.forEach(output => {
+          if (output.resourceId === resourceId) {
+            const rate = building.productionConfig?.rate?.current || building.productionConfig?.rate?.base || building.productionRate || 1;
+            // Production scales with building level
+            totalRate += (output.amount || 1) * rate * buildingLevel;
+          }
+        });
+        
+        // Check inputs (consumption - negative rate)
+        const inputs = building.productionConfig?.inputs || building.inputs || [];
+        inputs.forEach(input => {
+          if (input.resourceId === resourceId) {
+            const rate = building.productionConfig?.rate?.current || building.productionConfig?.rate?.base || building.productionRate || 1;
+            // Consumption also scales with building level
+            totalRate -= (input.amount || 1) * rate * buildingLevel;
+          }
+        });
+      }
+    }
+  });
+  
+  return totalRate;
+}
+
+/**
  * Build a building using the framework's cost system
  */
 function buildBuilding(buildingId) {
   const building = gameState.buildings[buildingId];
   if (!building || building.isBuilding) return;
 
-  // The Building class now handles all validation and resource spending
-  const success = building.startConstruction();
+  // If building is already built, level it up instead of building again
+  if (building.isBuilt) {
+    // Check if we can afford the next level (costs scale with level)
+    const nextLevelCost = building.calculateCost({ level: building.level + 1 });
+    let canAffordNextLevel = true;
+    
+    // Check each resource requirement for next level
+    for (const [resourceId, amount] of Object.entries(nextLevelCost)) {
+      const resource = gameState.resources[resourceId];
+      if (!resource || resource.amount < amount) {
+        canAffordNextLevel = false;
+        break;
+      }
+    }
+    
+    if (!canAffordNextLevel) {
+      showNotification(`Cannot afford ${building.name} level ${building.level + 1}`, 'error');
+      return;
+    }
 
-  if (success) {
+    // Spend resources for the level up manually
+    for (const [resourceId, amount] of Object.entries(nextLevelCost)) {
+      const resource = gameState.resources[resourceId];
+      if (resource) {
+        resource.decrement(amount);
+      }
+    }
+    
+    // Level up the building
+    building.levelUp();
+    
+    // Apply level-specific upgrades based on building type
+    if (building instanceof Miner) {
+      // For miners, update gather rate to scale with level
+      const baseRate = 2; // Original gather rate
+      const newRate = baseRate * building.level;
+      building.setGatherRate(newRate);
+      console.log(`⛏️ Miner upgraded: level ${building.level}, rate ${newRate}/sec`);
+      
+    } else if (building instanceof Factory) {
+      // For factories, increase production rate
+      const baseRate = building.productionRate || 1.0;
+      const newRate = baseRate * building.level;
+      if (building.setFactoryProductionRate) {
+        building.setFactoryProductionRate(newRate);
+      }
+      console.log(`🏭 Factory upgraded: level ${building.level}, rate ${newRate}`);
+      
+    } else if (building instanceof Storage) {
+      // For storage, increase capacity for all managed resources
+      const baseCapacities = {
+        ore: 100,
+        metal: 50,
+        energy: 25
+      };
+      
+      // Scale capacity by level
+      for (const [resourceId, baseCapacity] of Object.entries(baseCapacities)) {
+        const newCapacity = baseCapacity * building.level;
+        building.setCapacityFor(resourceId, newCapacity);
+        console.log(`📦 Storage upgraded: ${resourceId} capacity = ${newCapacity}`);
+      }
+      
+    } else {
+      // For other buildings, apply generic level scaling
+      console.log(`🏗️ Building upgraded: ${building.name} level ${building.level}`);
+    }
+    
     updateBuildingDisplay();
     updateResourceDisplay();
-    showNotification(`Started building ${building.name}`, 'info');
+    showNotification(`${building.name} upgraded to level ${building.level}!`, 'success');
+  } else {
+    // First time building - use normal construction process
+    const success = building.startConstruction();
+    if (success) {
+      updateBuildingDisplay();
+      updateResourceDisplay();
+      showNotification(`Started building ${building.name}`, 'info');
+    } else {
+      // Construction failed - show reason
+      console.warn(`Failed to start construction for ${building.name}`);
+      showNotification(`Cannot build ${building.name}`, 'error');
+    }
   }
 }
 
@@ -561,13 +748,35 @@ function purchaseUpgrade(upgradeId) {
   const upgrade = gameState.upgrades[upgradeId];
   if (!upgrade || upgrade.purchased) return;
 
-  // Use the game's upgrade processor for proper handling
-  const success = gameState.game.upgradeEffectProcessor.purchaseUpgrade(upgrade);
+  // Check if we can afford it
+  if (!upgrade.canAfford()) {
+    showNotification(`Cannot afford ${upgrade.name}`, 'error');
+    return;
+  }
 
-  if (success) {
+  // Deduct costs manually (since upgrade doesn't handle this automatically)
+  if (upgrade.costs) {
+    for (const cost of upgrade.costs) {
+      const resource = gameState.resources[cost.resourceId];
+      if (resource) {
+        resource.decrement(cost.amount);
+      }
+    }
+  }
+
+  // Apply the upgrade effect
+  try {
+    upgrade.apply();
+    upgrade.purchased = true;
+    
     updateUpgradeDisplay();
     updateResourceDisplay();
     updateBuildingDisplay();
+    
+    showNotification(`${upgrade.name} researched!`, 'success');
+  } catch (error) {
+    console.error('Failed to apply upgrade:', error);
+    showNotification(`Failed to apply ${upgrade.name}`, 'error');
   }
 }
 
@@ -588,20 +797,30 @@ function updateResourceDisplay() {
       resourceElement.style.display = "block";
       amountElement.textContent = Math.floor(resource.amount);
 
-      // Get production rate from ProductionManager
+      // Calculate production rate manually
       if (rateElement) {
-        const productionRate = gameState.game.productionManager.getNetProductionRate(resource.id);
+        const productionRate = calculateProductionRate(resource.id);
         rateElement.textContent = productionRate !== 0 
           ? `${productionRate > 0 ? '+' : ''}${productionRate.toFixed(1)}/sec` 
           : "+0/sec";
       }
 
-      // Get capacity from CapacityManager
-      const capacity = gameState.game.capacityManager.getTotalCapacity(resource.id);
-      if (capacity > 0) {
-        const utilization = (resource.amount / capacity) * 100;
+      // Get capacity from storage buildings
+      const storageBuildings = Object.values(gameState.buildings).filter(b => b instanceof Storage && b.isBuilt);
+      let totalCapacity = 0;
+      
+      // Calculate total capacity from all storage buildings
+      storageBuildings.forEach(storage => {
+        const storageCapacity = storage.getCapacityFor(resource.id);
+        if (storageCapacity) {
+          totalCapacity += storageCapacity;
+        }
+      });
+      
+      if (totalCapacity > 0) {
+        const utilization = (resource.amount / totalCapacity) * 100;
         if (capacityElement) {
-          capacityElement.textContent = `${Math.floor(resource.amount)}/${capacity}`;
+          capacityElement.textContent = `${Math.floor(resource.amount)}/${totalCapacity}`;
         }
         if (progressElement) {
           progressElement.style.width = `${Math.min(utilization, 100)}%`;
@@ -635,12 +854,29 @@ function updateBuildingDisplay() {
       buildingElement.style.display = "block";
       hasVisibleBuildings = true;
 
-      const buildingCount = building.isBuilt ? (building.level || 1) : 0;
-      countElement.textContent = `x${buildingCount}`;
+      if (building.isBuilt) {
+        const level = building.level || 1;
+        countElement.textContent = level > 1 ? `Lv.${level}` : `x1`;
+      } else {
+        countElement.textContent = `x0`;
+      }
 
-      // Use the cost system for validation
-      const canAfford = building.canAfford();
+      // Use manual cost validation for better reliability
+      let canAfford = true;
       const isBuilding = building.isBuilding;
+      
+      // Calculate cost for current or next level
+      const targetLevel = building.isBuilt ? building.level + 1 : building.level;
+      const requiredCost = building.calculateCost({ level: targetLevel });
+      
+      // Check each resource requirement
+      for (const [resourceId, amount] of Object.entries(requiredCost)) {
+        const resource = gameState.resources[resourceId];
+        if (!resource || resource.amount < amount) {
+          canAfford = false;
+          break;
+        }
+      }
 
       // Update button state
       const originalColors = {
@@ -657,14 +893,27 @@ function updateBuildingDisplay() {
         buttonElement.classList.remove("bg-gray-600", "cursor-not-allowed");
         buttonElement.classList.add(...colors.main.split(' '), ...colors.hover.split(' '));
         buttonElement.disabled = false;
-        buttonElement.textContent = "Build";
+        
+        // Show different text based on whether it's first build or upgrade
+        if (building.isBuilt) {
+          buttonElement.textContent = `Upgrade (Lv.${building.level + 1})`;
+        } else {
+          buttonElement.textContent = "Build";
+        }
       } else {
         Object.values(originalColors).forEach(colorSet => {
           buttonElement.classList.remove(...colorSet.main.split(' '), ...colorSet.hover.split(' '));
         });
         buttonElement.classList.add("bg-gray-600", "cursor-not-allowed");
         buttonElement.disabled = true;
-        buttonElement.textContent = isBuilding ? "Building..." : "Build";
+        
+        if (isBuilding) {
+          buttonElement.textContent = "Building...";
+        } else if (building.isBuilt) {
+          buttonElement.textContent = `Upgrade (Lv.${building.level + 1})`;
+        } else {
+          buttonElement.textContent = "Build";
+        }
       }
 
       // Update build progress
@@ -842,10 +1091,12 @@ function triggerWinCondition() {
  */
 function saveGame() {
   try {
-    gameState.game.save();
+    gameState.game.saveState();
     console.log("💾 Game saved");
+    showNotification("Game saved!", 'success');
   } catch (error) {
     console.error("Failed to save game:", error);
+    showNotification("Failed to save game", 'error');
   }
 }
 
@@ -854,8 +1105,9 @@ function saveGame() {
  */
 function loadGame() {
   try {
-    gameState.game.load();
+    gameState.game.loadState();
     console.log("📂 Game loaded");
+    showNotification("Game loaded!", 'success');
     
     // Refresh UI after loading
     updateResourceDisplay();
@@ -864,6 +1116,7 @@ function loadGame() {
     updateWinProgress();
   } catch (error) {
     console.error("Failed to load game:", error);
+    showNotification("Failed to load game", 'error');
   }
 }
 

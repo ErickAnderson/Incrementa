@@ -316,11 +316,12 @@ game.unlockManager.checkMilestones();
 Incrementa follows **Test-Driven Development (TDD)** principles with comprehensive test coverage:
 
 ### Test Coverage
-- **200+ total tests** across 10 test suites
+- **240+ total tests** across 12 test suites
 - **Core systems**: Cost validation, upgrade effects, unlock conditions, events
-- **Entity testing**: Resources, buildings, storage, producers
-- **Integration tests**: Multi-system interactions and workflows
-- **Performance tests**: Event system metrics and timing accuracy
+- **Entity testing**: Resources, buildings, storage, producers  
+- **Service testing**: GameLoopService, GameStateService, TimerCoordinator
+- **Integration tests**: Service integration and multi-system workflows
+- **Performance tests**: Benchmarking and optimization verification
 
 ### Running Tests
 
@@ -342,9 +343,10 @@ npm run test:watch
 
 ```
 tests/
-├── core/           # Core systems (cost, upgrades, unlocks, events)
+├── core/           # Core systems (game, services, cost, upgrades, events)
 ├── entities/       # Entity tests (resources, buildings, storage)
-├── integration/    # Multi-component scenarios
+├── integration/    # Service integration and multi-component scenarios
+├── performance/    # Benchmarking and optimization tests
 └── setup.ts        # Test utilities and helpers
 ```
 
@@ -365,6 +367,80 @@ tests/
 - **Delta-time calculations** for frame-rate independence
 - **Resource validation** before production attempts
 - **Batch production** for improved performance
+
+## Architecture & Services
+
+Incrementa features a modern, service-oriented architecture that provides excellent performance, testability, and maintainability:
+
+### Core Services
+
+**GameLoopService**: Manages the main game update cycle with 60fps frame management, delta time calculations, and game speed multipliers.
+
+```ts
+// Game loop is automatically managed, but you can customize behavior
+game.setGameSpeed(2.0); // Double speed
+game.start(); // Starts optimized game loop
+game.pause(); // Pauses all systems
+game.resume(); // Resumes from where left off
+```
+
+**GameStateService**: Handles save/load operations and offline progress calculation with robust error handling and backward compatibility.
+
+```ts
+// Save/load is automatic, but you can trigger manually
+game.saveState(); // Saves all entities and game state
+game.loadState(); // Loads and restores previous state
+game.calculateOfflineProgress(); // Applies time-based rewards
+```
+
+**TimerCoordinator**: Centralized timer management with performance tracking and lifecycle coordination.
+
+```ts
+// Timers are managed automatically, but you can add custom ones
+const customTimer = new Timer({
+  totalTime: 5000,
+  tickRate: 100,
+  onUpdateCallbacks: [() => console.log('Timer tick')]
+});
+game.addTimer('custom', customTimer);
+```
+
+**Enhanced Managers**: Existing managers have been enhanced with additional functionality:
+
+- **ProductionManager**: Optimized production coordination and bottleneck analysis
+- **EntityRegistry**: Static factory methods for consistent entity creation
+- **CapacityManager**: Efficient storage capacity calculations with caching
+- **EventManager**: Advanced event routing and performance monitoring
+
+### Performance Benefits
+
+The service architecture provides significant performance improvements:
+
+- **Game Loop**: Optimized 60fps update cycle with delta time accuracy
+- **Entity Creation**: Batch operations and factory pattern optimization
+- **Production Systems**: Intelligent optimization and bottleneck detection
+- **Memory Management**: Efficient cleanup and resource management
+- **Save/Load**: Fast serialization with incremental state updates
+
+### Service Integration
+
+All services work together seamlessly while maintaining clean boundaries:
+
+```ts
+// Services are automatically wired together
+const game = new Game(saveManager);
+
+// Game loop manages all updates
+game.start(); // Starts GameLoopService, coordinates timers, optimizes production
+
+// State management is transparent
+game.saveState(); // GameStateService handles serialization
+game.loadState(); // Automatic deserialization and entity restoration
+
+// Timer coordination is automatic
+game.pause(); // Pauses GameLoopService and TimerCoordinator
+game.resume(); // Resumes all systems in sync
+```
 
 ## Advanced Configuration
 
@@ -442,7 +518,7 @@ const newUpgrade = new Upgrade({
   - Data-driven upgrade effects  
   - Complex unlock conditions
   - Enhanced event system
-  - Comprehensive test suite (200+ tests)
+  - Comprehensive test suite (240+ tests)
   
 - **Phase 2: Advanced Features** ✅
   - Production system with input/output validation
@@ -450,7 +526,15 @@ const newUpgrade = new Upgrade({
   - Milestone and achievement tracking
   - Performance optimization and caching
   
-- **Phase 3: Developer Experience** 🚧
+- **Phase 3: Service Architecture** ✅
+  - Service-oriented architecture refactoring
+  - GameLoopService for optimized game updates
+  - GameStateService for save/load operations
+  - TimerCoordinator for centralized timer management
+  - Enhanced managers with factory patterns
+  - Performance benchmarking and optimization
+  
+- **Phase 4: Developer Experience** 🚧
   - Interactive documentation website
   - More game examples to showcase and theme templates
 

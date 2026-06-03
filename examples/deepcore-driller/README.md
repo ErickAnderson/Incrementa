@@ -22,6 +22,8 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
+**Note**: Make sure the main Incrementa framework is built first by running `npm run build` in the root directory.
+
 ## 📚 Framework Features Demonstrated
 
 ### 1. **Core Entity System**
@@ -110,7 +112,8 @@ building.on("buildComplete", handleBuildComplete);
 #### Building (Base)
 - Construction lifecycle with timers
 - Cost validation and spending
-- Level progression system
+- Level progression system (multiple buildings = higher levels)
+- Scaling production and costs with building levels
 
 ### 8. **Upgrade System**
 - `UpgradeEffectProcessor` for purchase handling
@@ -126,19 +129,20 @@ effect: () => {
 ```
 
 ### 9. **Save/Load System**
-- Automatic saving every 30 seconds
-- Manual save/load buttons
+- Automatic saving every 30 seconds using `game.saveState()`
+- Manual save/load buttons with `game.loadState()`
 - Uses localStorage for persistence
+- Visual feedback with notifications
 
 ### 10. **Performance Monitoring**
 - Framework's built-in performance tracking
 - FPS and frame time monitoring
 - Entity update timing
 
-### 11. **Configuration & Validation**
-- Uses `ConfigBuilder` for entity creation
-- Type-safe configuration with validation
+### 11. **Framework Configuration**
 - Framework initialization with custom settings
+- Type-safe configuration objects
+- Built-in validation for entity creation
 
 ```javascript
 // Framework initialization
@@ -170,23 +174,56 @@ src/
    - Shows how to create custom plugins
    - Event listening and stat tracking
 
-2. **Resource Setup** (lines 201-250)
-   - ConfigBuilder usage
+2. **Resource Setup** (lines 230-270)
+   - Game factory methods
    - Resource lifecycle
 
-3. **Building Setup** (lines 256-385)
+3. **Building Setup** (lines 275-395)
    - All building types demonstrated
    - Cost definitions with scaling
    - Event handling
 
-4. **Upgrade Setup** (lines 391-486)
+4. **Upgrade Setup** (lines 420-520)
    - Upgrade effects
    - Integration with buildings
 
-5. **UI Updates** (lines 577-780)
+5. **UI Updates** (lines 620-850)
    - Event-driven display updates
    - Production rate display
    - Capacity visualization
+
+## 🏗️ Level-Based Building System
+
+The game uses a **level-based building system** rather than multiple instances:
+
+- **First Build**: Creates the building at Level 1
+- **Additional Builds**: Upgrades existing building to higher levels  
+- **Production Scaling**: All production scales with building level
+- **Storage Scaling**: Storage capacity scales with building level
+- **Cost Scaling**: Each level costs more (configurable scaling factor)
+- **UI Display**: Shows `Lv.X` for levels > 1, or `x1` for single level
+
+### Building Type Scaling:
+
+**Miners**: Production = Base Rate × Level
+```
+Miner Level 1: 2 Ore/sec
+Miner Level 2: 4 Ore/sec  (2 × 2)
+Miner Level 3: 6 Ore/sec  (2 × 3)
+```
+
+**Factories**: Production Rate = Base Rate × Level
+```
+Smelter Level 1: 1.0 rate (3 Ore → 1 Metal/sec)
+Smelter Level 2: 2.0 rate (6 Ore → 2 Metal/sec)
+```
+
+**Storage**: Capacity = Base Capacity × Level
+```
+Storage Level 1: 100 Ore, 50 Metal, 25 Energy
+Storage Level 2: 200 Ore, 100 Metal, 50 Energy  
+Storage Level 3: 300 Ore, 150 Metal, 75 Energy
+```
 
 ## 🎯 Learning Points
 
@@ -194,6 +231,7 @@ src/
 - Start with resource creation and basic clicking
 - Progress to buildings and automation
 - Learn about capacity limits and storage
+- Build multiple levels of the same building for increased production
 - Discover the upgrade system
 
 ### For Developers
