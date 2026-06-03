@@ -4,12 +4,18 @@
   "description": "Incrementa is a JavaScript/TypeScript framework designed to simplify the creation and prototyping of incremental or idle games. The framework provides an abstract, modular set of entities and utilities needed for resource collection, buildings, upgrades, and progression mechanics.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ErickAnderson/Incrementa"
+    "url": "git+https://github.com/ErickAnderson/Incrementa.git"
   },
+  "bugs": {
+    "url": "https://github.com/ErickAnderson/Incrementa/issues"
+  },
+  "homepage": "https://github.com/ErickAnderson/Incrementa#readme",
   "keywords": [
     "incremental game",
     "idle game",
-    "game library"
+    "game library",
+    "typescript",
+    "game framework"
   ],
   "main": "dist/incrementa.umd.cjs",
   "module": "dist/incrementa.js",
@@ -34,8 +40,8 @@
     "watch": "vite build --watch",
     "build": "vite build && tsc",
     "preview": "vite preview",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

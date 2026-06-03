@@ -3,6 +3,10 @@ import tsparser from '@typescript-eslint/parser';
 
 export default [
   {
+    // Not part of the published TypeScript project
+    ignores: ['dist/**', 'src/examples/**']
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tsparser,
