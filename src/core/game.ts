@@ -337,18 +337,17 @@ export class Game implements IGame {
     // ==========================================
 
     private wireServices(): void {
-        this.gameLoop.onUpdate((deltaTimeSeconds) => {
-            // The game loop reports delta time in seconds. Entity update hooks
-            // (BaseEntity.onUpdate, producer ticks) and plugins use milliseconds
-            // by contract, while resource generation rates are per second.
-            const deltaMs = deltaTimeSeconds * 1000;
+        this.gameLoop.onUpdate((deltaTime) => {
+            // deltaTime is milliseconds. Every update hook (entities, producers,
+            // timers, plugins) and resource generation use the same unit;
+            // per-second rates are converted where they are applied.
             this.performanceMonitor.recordFrameTime();
-            this.updateEntities(deltaMs);
-            this.timers.updateTimers(deltaMs);
+            this.updateEntities(deltaTime);
+            this.timers.updateTimers(deltaTime);
             this.unlocks.checkConditions();
             this.production.optimizeProduction();
-            this.pluginSystem.updatePlugins(deltaMs);
-            this.updateResources(deltaTimeSeconds);
+            this.pluginSystem.updatePlugins(deltaTime);
+            this.updateResources(deltaTime);
         });
 
         // Storage capacity depends on which storages are built; invalidate the
@@ -366,9 +365,10 @@ export class Game implements IGame {
     }
 
     private updateResources(deltaTime: number): void {
+        // rate is per second; deltaTime is milliseconds.
         this.entities.getResources().forEach(resource => {
             if (resource.isUnlocked) {
-                resource.amount += resource.rate * deltaTime;
+                resource.amount += resource.rate * deltaTime / 1000;
             }
         });
     }

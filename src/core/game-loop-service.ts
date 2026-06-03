@@ -199,9 +199,11 @@ export class GameLoopService implements IGameLoopService {
         if (!this._isRunning) return;
 
         const currentTime = performance.now();
-        
-        // Calculate delta time with speed multiplier
-        const rawDeltaTime = Math.min((currentTime - this.lastUpdateTime) / 1000, 0.1); // Cap at 100ms
+
+        // Delta time is in milliseconds (frame-rate independent), capped to
+        // avoid large jumps after a stall. Milliseconds are the single timing
+        // unit across the framework so sub-second production cadences work.
+        const rawDeltaTime = Math.min(currentTime - this.lastUpdateTime, 100); // cap at 100ms
         const deltaTime = rawDeltaTime * this.gameSpeed;
 
         // Update FPS calculation
