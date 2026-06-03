@@ -6,6 +6,7 @@ import { Miner } from '../entities/buildings/miner';
 import { Upgrade } from './upgrade';
 import { logger } from '../utils/logger';
 import type { CostDefinition } from '../types/cost-definition';
+import type { UpgradeConfiguration } from '../types/upgrade-effects';
 
 /**
  * Configuration for creating a resource
@@ -77,9 +78,14 @@ export interface UpgradeConfig {
     id?: string;
     name: string;
     description?: string;
-    effect?: Record<string, unknown>;
+    /** Data-driven effect configuration (effects + targets) */
+    configuration?: UpgradeConfiguration;
+    /** Legacy function or data effect */
+    effect?: (() => void) | Record<string, unknown>;
     costs?: CostDefinition[];
     cost?: Record<string, number>; // Legacy support
+    isRepeatable?: boolean;
+    maxApplications?: number;
     unlockCondition?: () => boolean;
     tags?: string[];
 }
