@@ -1,6 +1,5 @@
 {
   "name": "incrementa",
-  "private": true,
   "version": "0.1.0",
   "description": "Incrementa is a JavaScript/TypeScript framework designed to simplify the creation and prototyping of incremental or idle games. The framework provides an abstract, modular set of entities and utilities needed for resource collection, buildings, upgrades, and progression mechanics.",
   "repository": {
@@ -14,28 +13,13 @@
   ],
   "main": "dist/incrementa.umd.cjs",
   "module": "dist/incrementa.js",
-  "types": "dist/**/*.d.ts",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "exports": {
     ".": {
       "import": "./dist/incrementa.js",
       "require": "./dist/incrementa.umd.cjs",
       "types": "./dist/index.d.ts"
-    },
-    "./core": {
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs",
-      "types": "./dist/core/index.d.ts"
-    },
-    "./entities": {
-      "import": "./dist/entities/index.js",
-      "require": "./dist/entities/index.cjs",
-      "types": "./dist/entities/index.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils/index.js",
-      "require": "./dist/utils/index.cjs",
-      "types": "./dist/utils/index.d.ts"
     }
   },
   "files": [
