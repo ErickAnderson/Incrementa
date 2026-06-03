@@ -4,7 +4,7 @@ Thanks for your interest in contributing. This guide covers the workflow, standa
 
 ## Development setup
 
-Incrementa targets Node.js 22 or later (see `.nvmrc`).
+Incrementa targets the Node.js 24 LTS line (see `.nvmrc`).
 
 ```bash
 npm install

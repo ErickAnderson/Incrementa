@@ -21,7 +21,7 @@ First public release.
 
 - Reconciled the codebase to a single service-oriented architecture, removing duplicate manager and god-class implementations.
 - Capacity reporting: `getTotalCapacityFor` returns the real built-storage sum; the unlimited interpretation lives in `hasGlobalCapacity` and `getRemainingCapacityFor`.
-- Modernised the toolchain to TypeScript 6, Vite 8, ESLint 10, and Jest 30 on Node.js 22, with zero runtime dependencies.
+- Modernised the toolchain to TypeScript 6, Vite 8, ESLint 10, and Jest 30 on Node.js 24 LTS, with zero runtime dependencies.
 
 ### Fixed
 

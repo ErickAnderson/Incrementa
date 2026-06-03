@@ -21,7 +21,7 @@ The framework is frontend-agnostic. It manages game logic and state and exposes 
 npm install incrementa
 ```
 
-Incrementa targets Node.js 22 or later and ships ESM and CommonJS builds with TypeScript declarations.
+Incrementa targets Node.js 24 LTS and ships ESM and CommonJS builds with TypeScript declarations.
 
 ## Quick start
 
