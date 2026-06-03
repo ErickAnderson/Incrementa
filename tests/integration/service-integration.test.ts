@@ -2,7 +2,6 @@ import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globa
 import { Game } from '../../src/core/game.js';
 import { GameLoopService } from '../../src/core/game-loop-service.js';
 import { GameStateService } from '../../src/core/game-state-service.js';
-import { TimerCoordinator } from '../../src/core/timer-coordinator.js';
 import { Timer } from '../../src/core/timer.js';
 import { SaveManager } from '../../src/core/save-manager.js';
 import { createMockStorageProvider } from '../setup.js';
@@ -121,7 +120,7 @@ describe('Service Integration Tests', () => {
         });
     });
 
-    describe('TimerCoordinator Integration', () => {
+    describe('Timer Integration', () => {
         test('should manage timers through Game class', () => {
             const timer = new Timer({
                 totalTime: 5000,

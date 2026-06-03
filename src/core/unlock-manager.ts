@@ -464,14 +464,15 @@ export class UnlockManager {
             if (result.isMet) {
                 milestone.isAchieved = true;
                 milestone.achievedAt = Date.now();
-                
-                this._emitEvent('milestoneAchieved', { milestone });
-                logger.info(`Milestone achieved: ${milestone.name}`);
-                
-                // Apply reward if present
+
+                // Apply the reward before announcing achievement so listeners
+                // observe the already-applied state.
                 if (milestone.reward) {
                     this.applyMilestoneReward(milestone);
                 }
+
+                this._emitEvent('milestoneAchieved', { milestone });
+                logger.info(`Milestone achieved: ${milestone.name}`);
             }
         }
     }
@@ -576,7 +577,7 @@ export class UnlockManager {
                 if (typeof reward.value === 'number') {
                     const resource = this.game.getResourceById(reward.target);
                     if (resource) {
-                        resource.increment(reward.value, false); // reward bypasses capacity
+                        resource.increment(reward.value); // respects storage capacity like all gains
                         logger.info(`Milestone reward applied: +${reward.value} ${reward.target} (${milestone.name})`);
                         return;
                     }
