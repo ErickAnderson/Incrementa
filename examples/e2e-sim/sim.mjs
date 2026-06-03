@@ -1,20 +1,38 @@
 /**
- * Incrementa end-to-end simulation.
+ * Incrementa end-to-end showcase.
  *
- * Consumes Incrementa as an installed npm package (resolves to dist via the
- * package "exports" map, not the source) and runs the real game loop for a
- * few minutes while a scripted "player" unlocks entities, constructs
- * buildings, levels them up, and buys upgrades. Exercises every major
- * subsystem and asserts invariants at the end.
+ * This is a complete idle game running headless, built with Incrementa used as
+ * an installed npm package. It exists to show what the framework gives you.
+ *
+ * What you write: plain config objects that DECLARE the world (resources,
+ *   miners, factories, storage, upgrades, unlock conditions, milestones) and a
+ *   few event subscriptions for your UI.
+ *
+ * What the framework does for you, automatically, from a single game.start():
+ *   - Runs a frame-rate-independent game loop (here, headless via setTimeout;
+ *     in a browser it uses requestAnimationFrame).
+ *   - Drives production cycles (miners gather, factories convert inputs to
+ *     outputs) and passive resource generation.
+ *   - Enforces global storage capacity.
+ *   - Evaluates unlock conditions and milestones, and applies milestone rewards.
+ *   - Processes data-driven and legacy upgrade effects with cost scaling.
+ *   - Emits events (amountChanged, buildComplete, unlocked, milestoneAchieved)
+ *     so a UI can react without polling.
+ *   - Handles save / load and offline progress, plugins, and timers.
+ *
+ * It is frontend-agnostic with zero runtime dependencies, so the same code runs
+ * in Node and in the browser. At the end it asserts 23 invariants so the
+ * showcase doubles as proof the stack actually works end to end.
  *
  * Run: node sim.mjs            (defaults to ~180s)
- *      DURATION_MS=60000 node sim.mjs
+ *      DURATION_MS=100000 node sim.mjs
  */
 
 import {
   Game,
   SaveManager,
   Factory,
+  Timer,
   createCosts,
   initializeFramework,
   setDebugMode
@@ -49,7 +67,12 @@ storage.setItem("metadata", JSON.stringify({ lastSave: Date.now() - 90000 }));
 const game = new Game(new SaveManager(storage));
 
 // ----------------------------------------------------------------------------
-// World
+// World - declare it; the framework wires and runs it.
+//
+// Everything below is plain configuration. Each game.create* call returns a
+// live entity already connected to the event, unlock, production, and capacity
+// systems. There is no manual registration, no hand-written update loop, and
+// no glue between buildings and resources - that is the framework's job.
 // ----------------------------------------------------------------------------
 
 const wood = game.createResource({ id: "wood", name: "Wood", initialAmount: 120, unlockCondition: () => true });
@@ -165,7 +188,8 @@ game.pluginSystem.activatePlugin("auto-harvester");
 // Performance monitoring ---------------------------------------------------
 game.setPerformanceMonitoring(true);
 
-// Event instrumentation ----------------------------------------------------
+// Events - how a UI reacts without polling. Subscribe once; the framework
+// pushes state changes (amount changes, builds, unlocks, milestones) to you.
 const events = { amountChanged: 0, buildComplete: 0, unlocked: 0, levelUp: 0, milestone: 0 };
 game.on("amountChanged", () => events.amountChanged++);
 game.on("buildComplete", () => events.buildComplete++);
@@ -174,6 +198,51 @@ game.on("levelUp", () => events.levelUp++);
 // Milestone events are emitted on the UnlockManager's own event bus.
 game.unlockManager.on("milestoneAchieved", () => { events.milestone++; });
 
+// World overview - so the progression numbers below mean something ----------
+function describeWorld() {
+  console.log(`
+=================== DEEPCHAIN: WORLD OVERVIEW ===================
+Goal: bootstrap a wood -> ore -> iron -> gold production chain.
+
+Resources:
+  Wood    raw material, starts at ${wood.amount}. Auto-Harvester plugin adds +3/s.
+  Ore     mined from the ground by the Ore Miner.
+  Iron    smelted from Ore by the Iron Foundry.
+  Gold    minted from Iron by the Gold Foundry (the win currency).
+  Energy  passive generation at 1/s, boosted by the Energy Surge upgrade.
+
+Producers (the framework runs these automatically once built + unlocked):
+  Wood Miner     gathers 9 wood/s             free, instant build
+  Ore Miner      gathers 6 ore/s              costs 60 wood, 2s build, unlocks at wood >= 60
+  Iron Foundry   2 ore  -> 1 iron  @ 1 cyc/s  costs 90 wood, 3s build, unlocks at ore >= 30
+  Gold Foundry   3 iron -> 1 gold  @ 0.5 cyc/s costs 160 wood, 4s build, unlocks at iron >= 20
+
+Storage (Warehouse): wood/ore/gold/energy effectively uncapped; iron capped at 800.
+
+Upgrades:
+  Energy Surge   +0.5 energy/s per level, repeatable x5, gold cost scales 1.6x
+  Wood Windfall  one-off +250 wood, costs 40 ore
+
+Milestone:
+  First Gold     reach 15 gold  ->  reward +40 gold
+
+What to expect over the run:
+  - Wood ramps first and funds the Ore Miner; ore then feeds the Iron Foundry,
+    and iron feeds the Gold Foundry.
+  - Iron stays low on purpose: the Gold Foundry consumes it about as fast as
+    the Iron Foundry makes it (watch "bottleneck" behaviour).
+  - Around 75-80s gold passes 15 and the milestone fires: gold jumps by +40.
+  - Energy climbs steadily from passive generation plus Energy Surge upgrades.
+  - A save/load round trip happens mid-run; totals dip slightly on reload.
+
+Progression line legend:
+  built = buildings constructed   upg = upgrades applied   lvlUps = miner level-ups
+  events: bc = buildComplete, ul = entities unlocked, ms = milestones achieved
+================================================================
+`);
+}
+describeWorld();
+
 // Offline progress (uses the seeded metadata) ------------------------------
 let offlineEnergyBefore = energy.amount;
 game.calculateOfflineProgress();
@@ -181,7 +250,12 @@ const offlineGain = energy.amount - offlineEnergyBefore;
 log(`offline progress applied: +${offlineGain.toFixed(1)} energy`);
 
 // ----------------------------------------------------------------------------
-// Run
+// Run - one call drives the entire simulation.
+//
+// game.start() runs the loop: production cycles, resource generation, capacity
+// enforcement, unlock and milestone evaluation, upgrade effects, plugins, and
+// timers all advance every tick. The "player" below only makes high-level
+// decisions (what to build/buy); it never implements game mechanics.
 // ----------------------------------------------------------------------------
 
 game.startAllProduction();
@@ -195,7 +269,10 @@ let savedOnce = false;
 let loadedOnce = false;
 let maxIronSeen = 0;
 
-const player = setInterval(() => {
+// The player's decisions, the reporting cadence, and the run timeout are all
+// driven by the framework's own Timer utility (registered via game.addTimer)
+// rather than raw setInterval/setTimeout - the harness dogfoods the API too.
+function playerStep() {
   try {
     // Evaluate unlocks and milestones.
     game.checkUnlockConditions();
@@ -239,9 +316,9 @@ const player = setInterval(() => {
   } catch (e) {
     crashed = e;
   }
-}, 1000);
+}
 
-const reporter = setInterval(() => {
+function report() {
   const fps = typeof game.gameLoop.getCurrentFps === "function" ? game.gameLoop.getCurrentFps() : "?";
   log(
     `wood=${wood.amount.toFixed(0)} ore=${ore.amount.toFixed(0)} iron=${iron.amount.toFixed(0)} ` +
@@ -249,16 +326,16 @@ const reporter = setInterval(() => {
     `built=${built.size} upg=${upgradesApplied} lvlUps=${levelUps} fps=${fps} | ` +
     `events bc=${events.buildComplete} ul=${events.unlocked} ms=${events.milestone}`
   );
-}, 10000);
+}
 
 // ----------------------------------------------------------------------------
 // Finalize and assert
 // ----------------------------------------------------------------------------
 
-setTimeout(() => {
+function finalize() {
  try {
-  clearInterval(player);
-  clearInterval(reporter);
+  game.removeTimer("player");
+  game.removeTimer("reporter");
   game.pause();
 
   const prodStats = game.getGlobalProductionStats();
@@ -315,4 +392,22 @@ setTimeout(() => {
   console.error("FINALIZE ERROR:", e && e.stack ? e.stack : e);
   process.exit(2);
  }
-}, DURATION_MS);
+}
+
+// Drive the harness with framework Timers instead of raw setInterval/setTimeout.
+const playerTimer = new Timer({
+  totalTime: DURATION_MS,
+  tickRate: 1000,                  // one player decision per second
+  onUpdateCallbacks: [playerStep],
+  onCompleteCallbacks: [finalize]  // finalize when the run elapses
+});
+const reporterTimer = new Timer({
+  totalTime: DURATION_MS,
+  tickRate: 10000,                 // a progress line every 10 seconds
+  onUpdateCallbacks: [report]
+});
+
+game.addTimer("player", playerTimer);
+game.addTimer("reporter", reporterTimer);
+playerTimer.start();
+reporterTimer.start();
