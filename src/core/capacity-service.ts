@@ -34,7 +34,7 @@ export class CapacityService implements ICapacityService {
 
     constructor(
         private getStorages: () => Storage[],
-        private getResourceById: (id: string) => { amount: number; [key: string]: unknown } | undefined
+        private getResourceById: (id: string) => { amount: number } | undefined
     ) {
         logger.debug('CapacityService: Initialized');
     }
@@ -55,7 +55,7 @@ export class CapacityService implements ICapacityService {
         for (const storage of storages) {
             if (storage.isBuilt) {
                 const capacity = storage.getCapacityFor(resourceId);
-                if (capacity > 0) {
+                if (capacity !== undefined && capacity > 0) {
                     totalCapacity += capacity;
                     logger.debug(`CapacityService: Storage '${storage.name}' provides ${capacity} capacity for ${resourceId}`);
                 }
@@ -148,7 +148,7 @@ export class CapacityService implements ICapacityService {
             cachedResources: this.capacityCache.size,
             cacheValidUntil: this.cacheValidUntil,
             totalStorages: storages.length,
-            builtStorages: storages.filter(s => s.isBuilt()).length
+            builtStorages: storages.filter(s => s.isBuilt).length
         };
     }
 

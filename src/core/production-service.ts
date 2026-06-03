@@ -1,6 +1,5 @@
 import { BaseEntity } from './base-entity';
 import { Building } from '../entities/buildings/building';
-import { ProducerBuilding } from '../entities/buildings/producer-building';
 import { logger } from '../utils/logger';
 
 /**
@@ -71,7 +70,7 @@ export interface IProductionService {
 export class ProductionService implements IProductionService {
     constructor(
         private getEntities: () => BaseEntity[],
-        private getResourceById: (id: string) => { amount: number; [key: string]: unknown } | undefined,
+        private getResourceById: (id: string) => { amount: number } | undefined,
         private hasGlobalCapacity: (resourceId: string, amount: number) => boolean
     ) {
         logger.debug('ProductionService: Initialized');

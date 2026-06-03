@@ -1,4 +1,5 @@
 import { Building } from "./building";
+import { IGame } from "../../core/base-entity";
 import { 
   ProductionConfig, 
   ProductionState, 
@@ -285,7 +286,7 @@ export class ProducerBuilding extends Building {
     this.productionConfig.inputs.forEach(input => {
       const resource = this.game!.getEntityById(input.resourceId);
       if (resource && 'decrement' in resource) {
-        const actualConsumed = Math.min(input.amount, (resource as { amount: number }).amount);
+        const actualConsumed = Math.min(input.amount, (resource as unknown as { amount: number }).amount);
         (resource as { decrement: (amount: number) => void }).decrement(actualConsumed);
         cycle.inputsConsumed[input.resourceId] = actualConsumed;
         this.productionState.totalConsumed[input.resourceId] += actualConsumed;
@@ -302,7 +303,7 @@ export class ProducerBuilding extends Building {
         const resource = this.game!.getEntityById(output.resourceId);
         if (resource && 'increment' in resource) {
           const actualProduced = output.amount * this.productionConfig.efficiency.current;
-          const canIncrement = (resource as { canIncrement?: (amount: number) => boolean }).canIncrement ? (resource as { canIncrement: (amount: number) => boolean }).canIncrement(actualProduced) : true;
+          const canIncrement = (resource as unknown as { canIncrement?: (amount: number) => boolean }).canIncrement ? (resource as unknown as { canIncrement: (amount: number) => boolean }).canIncrement(actualProduced) : true;
           
           if (canIncrement) {
             (resource as { increment: (amount: number, respectCapacity?: boolean) => void }).increment(actualProduced, true); // Respect capacity
@@ -489,7 +490,7 @@ export class ProducerBuilding extends Building {
    * Sets the game reference for capacity and resource checking
    * @param game - Game instance reference
    */
-  setGameReference(game: unknown): void {
+  setGameReference(game: IGame): void {
     super.setGameReference(game);
   }
 

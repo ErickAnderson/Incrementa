@@ -136,31 +136,33 @@ export class EventManager {
         const startTime = (globalThis as { performance?: { now?: () => number } }).performance?.now?.() || Date.now();
         
         try {
+            const payload: Record<string, unknown> =
+                (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : {};
             const event: SystemEvent = {
                 type: eventType,
                 data: {
-                    ...data,
+                    ...payload,
                     timestamp: Date.now(),
                     ...options.metadata
                 },
                 timestamp: Date.now(),
-                source: options.metadata?.source,
-                target: options.metadata?.target
+                source: options.metadata?.source as string | undefined,
+                target: options.metadata?.target as string | undefined
             };
-            
+
             // Add to event history
             this.addToHistory(event);
-            
+
             // Process through middleware
             this.processMiddleware(event, () => {
                 // Emit to global listeners if enabled
                 if (options.global !== false) {
                     this.emitToGlobalListeners(event);
                 }
-                
+
                 // Emit to entity listeners if enabled and entityId is provided
-                if (options.entity !== false && data.entityId) {
-                    this.emitToEntityListeners(data.entityId, event);
+                if (options.entity !== false && payload.entityId) {
+                    this.emitToEntityListeners(payload.entityId as string, event);
                 }
             });
             
@@ -262,7 +264,7 @@ export class EventManager {
             this.globalListeners.set(eventType, []);
         }
         
-        this.globalListeners.get(eventType)!.push({ callback, options });
+        this.globalListeners.get(eventType)!.push({ callback: callback as (...args: unknown[]) => void, options });
         
         if (this.debugMode) {
             logger.info(`Global listener added for event '${eventType}'`);
@@ -680,16 +682,17 @@ export class EventManager {
     }
     
     private eventMatchesFilters(event: SystemEvent, filters: EventSubscriptionOptions): boolean {
-        if (filters.entityId && event.data.entityId !== filters.entityId) {
+        const data = (event.data ?? {}) as { entityId?: string; entity?: { constructor: { name: string }; tags?: string[] } };
+        if (filters.entityId && data.entityId !== filters.entityId) {
             return false;
         }
-        
-        if (filters.entityType && event.data.entity?.constructor.name !== filters.entityType) {
+
+        if (filters.entityType && data.entity?.constructor.name !== filters.entityType) {
             return false;
         }
-        
+
         if (filters.tags && filters.tags.length > 0) {
-            const eventTags = event.data.entity?.tags || [];
+            const eventTags = data.entity?.tags || [];
             if (!filters.tags.some(tag => eventTags.includes(tag))) {
                 return false;
             }
@@ -703,7 +706,7 @@ export class EventManager {
     }
     
     private handleDebounce(event: SystemEvent, callback: (...args: unknown[]) => void, options: EventSubscriptionOptions): void {
-        const debounceKey = `${event.type}:${event.data.entityId || 'global'}:${callback.toString()}`;
+        const debounceKey = `${event.type}:${(event.data as { entityId?: string })?.entityId || 'global'}:${callback.toString()}`;
         
         // Clear existing timer
         const existingTimer = this.debounceTimers.get(debounceKey);

@@ -9,7 +9,9 @@ export interface IUnlockService {
     // Unlock management
     checkUnlockConditions(): void;
     unlockEntity(entityId: string): boolean;
-    
+    registerUnlockCondition(entity: BaseEntity, condition: () => boolean): void;
+    removeUnlockCondition(entityId: string): void;
+
     // Statistics and monitoring
     getUnlockStats(): any;
     
@@ -119,7 +121,7 @@ export class UnlockService implements IUnlockService {
      * Checks unlock conditions for specific entities (performance optimization)
      */
     checkConditions(): void {
-        this.unlockManager.checkConditions();
+        this.unlockManager.checkUnlockConditions();
     }
 
     /**

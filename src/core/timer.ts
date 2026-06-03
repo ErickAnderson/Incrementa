@@ -312,7 +312,7 @@ export class Timer {
      */
     private scheduleRepeatingTimer(callback: () => void, interval: number): number {
         if (typeof (globalThis as unknown as { setInterval?: typeof setInterval }).setInterval === 'function') {
-            return (globalThis as unknown as { setInterval: typeof setInterval }).setInterval(callback, interval);
+            return (globalThis as unknown as { setInterval: typeof setInterval }).setInterval(callback, interval) as unknown as number;
         } else {
             const recursiveTimer = () => {
                 callback();

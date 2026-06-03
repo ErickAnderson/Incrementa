@@ -269,7 +269,7 @@ export class Building extends BaseEntity implements CostProvider {
             // Fallback validation if no cost system available
             const calculatedCosts = this.calculateCost(options);
             for (const [resourceId, requiredAmount] of Object.entries(calculatedCosts)) {
-                const resource = this._game?.getResourceById(resourceId);
+                const resource = this._game?.getResourceById?.(resourceId);
                 if (!resource || resource.amount < requiredAmount) {
                     return false;
                 }
@@ -358,7 +358,7 @@ export class Building extends BaseEntity implements CostProvider {
      * Gets the game reference
      */
     get game(): Game | undefined {
-        return this._game;
+        return this._game as Game | undefined;
     }
 
     /**

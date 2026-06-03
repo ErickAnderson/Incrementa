@@ -9,7 +9,8 @@ import type {
   UnlockMilestone,
   UnlockEventType,
   UnlockEvent,
-  UnlockManagerStats
+  UnlockManagerStats,
+  UnlockConditionType
 } from "../types/unlock-conditions";
 import type { Game } from "./game";
 
@@ -177,8 +178,8 @@ export class UnlockManager {
                 // Handle new data-driven conditions
                 else if (entry.complexCondition && this.conditionEvaluator && this.game) {
                     const context = {
-                        game: this.game,
-                        entity: entry.entity,
+                        game: this.game as unknown as Record<string, unknown>,
+                        entity: entry.entity as unknown as Record<string, unknown>,
                         timestamp: Date.now()
                     };
                     
@@ -389,7 +390,7 @@ export class UnlockManager {
             conditionsMet: this.unlockedEntities.size,
             entitiesUnlocked: this.unlockedEntities.size,
             milestonesAchieved: Array.from(this.milestones.values()).filter(m => m.isAchieved).length,
-            commonConditionTypes: this.getCommonConditionTypes(),
+            commonConditionTypes: this.getCommonConditionTypes() as UnlockConditionType[],
             averageUnlockTime: this.calculateAverageUnlockTime(),
             totalEvaluationTime: 0
         };
@@ -450,7 +451,7 @@ export class UnlockManager {
             if (milestone.isAchieved) continue;
             
             const context = {
-                game: this.game,
+                game: this.game as unknown as Record<string, unknown>,
                 entity: null,
                 timestamp: Date.now()
             };

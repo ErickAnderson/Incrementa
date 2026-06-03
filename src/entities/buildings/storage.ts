@@ -1,4 +1,5 @@
 import {Building} from "./building";
+import { IGame } from "../../core/base-entity";
 import { logger } from "../../utils/logger";
 
 /**
@@ -214,7 +215,7 @@ export class Storage extends Building {
      * @param game - The game instance
      * @internal
      */
-    setGameReference(game: unknown): void {
+    setGameReference(game: IGame): void {
         super.setGameReference(game);
         if (game) {
             logger.debug(`Storage ${this.name}: Game reference set - capacity management active`);

@@ -1,4 +1,5 @@
 import { EventManager, EventStats } from './event-manager';
+import { BaseEntity } from './base-entity';
 import { logger } from '../utils/logger';
 
 /**
@@ -9,10 +10,15 @@ export interface IEventService {
     on(eventName: string, callback: (...args: unknown[]) => void): void;
     off(eventName: string, callback: (...args: unknown[]) => void): boolean;
     emit(eventName: string, data?: unknown): void;
-    
+
+    // Entity event registration
+    registerEntity(entity: BaseEntity): void;
+    routeEntityEvents(entity: BaseEntity): void;
+    unregisterEntity(entityId: string): void;
+
     // Statistics and monitoring
     getEventStats(): EventStats;
-    
+
     // Manager access
     getEventManager(): EventManager;
     

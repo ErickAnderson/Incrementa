@@ -125,7 +125,7 @@ export class GameStateService implements IGameStateService {
 
             // Load metadata
             if (gameState.metadata) {
-                this.totalGameTime = gameState.metadata.totalGameTime || 0;
+                this.totalGameTime = ((gameState.metadata as Record<string, unknown>).totalGameTime as number) || 0;
                 logger.debug(`GameStateService: Loaded game time: ${this.totalGameTime}ms`);
             }
 
@@ -136,13 +136,13 @@ export class GameStateService implements IGameStateService {
 
             // Load settings
             if (gameState.settings) {
-                this.loadGameSettings(game, gameState.settings);
+                this.loadGameSettings(game, gameState.settings as Record<string, unknown>);
             }
 
             this.lastLoadTime = Date.now();
             this.loadCount++;
 
-            logger.info(`GameStateService: Game state loaded successfully (${gameState.entities?.length || 0} entities)`);
+            logger.info(`GameStateService: Game state loaded successfully (${(gameState.entities as unknown[])?.length || 0} entities)`);
         } catch (error) {
             logger.error(`GameStateService: Failed to load game state: ${error}`);
             throw new Error(`Load operation failed: ${error}`);
@@ -250,45 +250,6 @@ export class GameStateService implements IGameStateService {
     }
 
     /**
-     * Gets entities from the game instance
-     * @param game - The game instance
-     * @returns Array of entities
-     */
-    private getEntitiesFromGame(game: IGame): BaseEntity[] {
-        // Try to get entities through common patterns
-        if ('entityRegistry' in game && typeof (game as unknown as Record<string, unknown>).entityRegistry === 'object') {
-            const registry = (game as unknown as Record<string, unknown>).entityRegistry as Record<string, unknown>;
-            if ('getAllEntities' in registry && typeof registry.getAllEntities === 'function') {
-                return (registry.getAllEntities as () => BaseEntity[])();
-            }
-        }
-
-        logger.warn('GameStateService: Could not find entities in game instance');
-        return [];
-    }
-
-    /**
-     * Serializes an entity for saving
-     * @param entity - The entity to serialize
-     * @returns Serialized entity data
-     */
-    private serializeEntity(entity: BaseEntity): Record<string, unknown> {
-        const data: Record<string, unknown> = {
-            id: entity.id,
-            name: entity.name,
-            isUnlocked: entity.isUnlocked
-        };
-
-        // Add entity-specific serialization if available
-        if ('serialize' in entity && typeof (entity as unknown as Record<string, unknown>).serialize === 'function') {
-            const serialized = ((entity as unknown as Record<string, unknown>).serialize as () => Record<string, unknown>)();
-            Object.assign(data, serialized);
-        }
-
-        return data;
-    }
-
-    /**
      * Validates the structure of a game state object
      * @param gameState - The game state to validate
      * @returns Whether the game state is valid
@@ -367,22 +328,6 @@ export class GameStateService implements IGameStateService {
     }
 
     /**
-     * Gets game settings for saving
-     * @param game - The game instance
-     * @returns Game settings object
-     */
-    private getGameSettings(game: IGame): Record<string, unknown> {
-        const settings: Record<string, unknown> = {};
-
-        // Try to get speed setting
-        if ('getSpeed' in game && typeof (game as unknown as Record<string, unknown>).getSpeed === 'function') {
-            settings.gameSpeed = ((game as unknown as Record<string, unknown>).getSpeed as () => number)();
-        }
-
-        return settings;
-    }
-
-    /**
      * Loads game settings from saved state
      * @param game - The game instance
      * @param settings - Settings to load
@@ -391,43 +336,5 @@ export class GameStateService implements IGameStateService {
         if (typeof settings.gameSpeed === 'number' && 'setSpeed' in game && typeof (game as unknown as Record<string, unknown>).setSpeed === 'function') {
             ((game as unknown as Record<string, unknown>).setSpeed as (speed: number) => void)(settings.gameSpeed);
         }
-    }
-
-    /**
-     * Simulates offline progress
-     * @param game - The game instance
-     * @param timeSeconds - Offline time in seconds
-     * @returns Progress data
-     */
-    private simulateOfflineProgress(game: IGame, timeSeconds: number): { resourcesGained: number } {
-        // Simple simulation - just count productive entities
-        let productiveEntities = 0;
-
-        const entities = this.getEntitiesFromGame(game);
-        for (const entity of entities) {
-            if (entity.isUnlocked && 'isCurrentlyProducing' in entity) {
-                const producer = entity as unknown as Record<string, unknown>;
-                if (typeof producer.isCurrentlyProducing === 'function' && producer.isCurrentlyProducing()) {
-                    productiveEntities++;
-                }
-            }
-        }
-
-        // Very conservative offline progress: 10% of normal rate
-        const offlineMultiplier = 0.1;
-        const resourcesGained = Math.floor(productiveEntities * timeSeconds * offlineMultiplier);
-
-        return { resourcesGained };
-    }
-
-    /**
-     * Applies offline progress to the game
-     * @param game - The game instance
-     * @param progressData - Progress data to apply
-     */
-    private applyOfflineProgress(game: IGame, progressData: { resourcesGained: number }): void {
-        // This would need to be implemented based on the specific game logic
-        // For now, just log the progress that would be applied
-        logger.info(`GameStateService: Would apply ${progressData.resourcesGained} resources from offline progress`);
     }
 }

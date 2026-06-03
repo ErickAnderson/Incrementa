@@ -1,8 +1,20 @@
-// Forward declaration for the Game interface to avoid circular dependencies
+import type { CostSystem } from './cost-system';
+import type { UpgradeEffectProcessor } from './upgrade-effect-processor';
+
+/**
+ * Forward declaration for the Game interface to avoid circular dependencies.
+ * Describes the subset of the Game surface that entities and upgrades rely on.
+ */
 export interface IGame {
     eventManager?: {
         emitFromEntity(entityId: string, eventName: string, data?: unknown): void;
     };
+    costSystem?: CostSystem;
+    upgradeEffectProcessor?: UpgradeEffectProcessor;
+    getResourceById?(resourceId: string): { amount: number } | undefined;
+    getTotalCapacityFor(resourceId: string): number;
+    hasGlobalCapacity(resourceId: string, amount: number): boolean;
+    getRemainingCapacityFor(resourceId: string): number;
 }
 
 /**
@@ -68,9 +80,9 @@ export interface CapacityProvider {
  * @returns Whether the entity implements GameAware
  */
 export function isGameAware(entity: unknown): entity is GameAware {
-    return entity && 
-           typeof entity.setGameReference === 'function' &&
-           typeof entity.getGameReference === 'function';
+    return typeof entity === 'object' && entity !== null &&
+           typeof (entity as Partial<GameAware>).setGameReference === 'function' &&
+           typeof (entity as Partial<GameAware>).getGameReference === 'function';
 }
 
 /**
@@ -79,10 +91,10 @@ export function isGameAware(entity: unknown): entity is GameAware {
  * @returns Whether the entity implements ResourceProvider
  */
 export function isResourceProvider(entity: unknown): entity is ResourceProvider {
-    return entity &&
-           typeof entity.amount === 'number' &&
-           typeof entity.increment === 'function' &&
-           typeof entity.decrement === 'function';
+    return typeof entity === 'object' && entity !== null &&
+           typeof (entity as Partial<ResourceProvider>).amount === 'number' &&
+           typeof (entity as Partial<ResourceProvider>).increment === 'function' &&
+           typeof (entity as Partial<ResourceProvider>).decrement === 'function';
 }
 
 /**
@@ -91,9 +103,9 @@ export function isResourceProvider(entity: unknown): entity is ResourceProvider 
  * @returns Whether the entity implements CapacityProvider
  */
 export function isCapacityProvider(entity: unknown): entity is CapacityProvider {
-    return entity &&
-           typeof entity.getCapacityFor === 'function' &&
-           typeof entity.getManagedResourceIds === 'function';
+    return typeof entity === 'object' && entity !== null &&
+           typeof (entity as Partial<CapacityProvider>).getCapacityFor === 'function' &&
+           typeof (entity as Partial<CapacityProvider>).getManagedResourceIds === 'function';
 }
 
 /**

@@ -1,6 +1,9 @@
 import { logger } from "../utils/logger";
 import { GameAware, IGame } from "./game-aware";
 
+// Re-exported so entity subclasses can import the game interface from here
+export type { IGame } from "./game-aware";
+
 /**
  * Base abstract class for all game entities, providing shared properties and methods.
  * Implements PRD specification for BaseEntity with event emitters and lifecycle hooks.
@@ -273,11 +276,11 @@ export abstract class BaseEntity implements GameAware {
      * @param data - The serialized data to restore from
      */
     fromJSON(data: Record<string, unknown>): void {
-        if (data.isUnlocked !== undefined) {
+        if (typeof data.isUnlocked === 'boolean') {
             this.isUnlocked = data.isUnlocked;
         }
-        if (data.tags !== undefined) {
-            this.tags = data.tags;
+        if (Array.isArray(data.tags)) {
+            this.tags = data.tags as string[];
         }
         // Note: id, name, description are typically set during construction
     }

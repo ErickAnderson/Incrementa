@@ -285,13 +285,13 @@ export class Resource extends BaseEntity {
     loadSaveData(saveData: Record<string, unknown>): void {
         super.loadSaveData(saveData);
         
-        if (saveData.amount !== undefined) {
+        if (typeof saveData.amount === 'number') {
             this.amount = saveData.amount;
         }
-        if (saveData.rate !== undefined) {
+        if (typeof saveData.rate === 'number') {
             this.rate = saveData.rate;
         }
-        if (saveData.basePassiveRate !== undefined) {
+        if (typeof saveData.basePassiveRate === 'number') {
             this.basePassiveRate = saveData.basePassiveRate;
         }
     }

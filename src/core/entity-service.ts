@@ -147,7 +147,7 @@ export class EntityService implements IEntityService {
      * Legacy compatibility method for registering entities (use addEntity instead)
      * @deprecated Use addEntity() instead
      */
-    registerEntity(entity: BaseEntity, game?: any): { success: boolean; error?: string } {
+    registerEntity(entity: BaseEntity, _game?: any): { success: boolean; error?: string } {
         try {
             const success = this.addEntity(entity);
             return { success };

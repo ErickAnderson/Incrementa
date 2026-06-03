@@ -61,7 +61,6 @@ export class Game implements IGame {
     // ==========================================
     private gameSpeed: number = 1.0;
     private totalGameTime: number = 0;
-    private lastUpdate: number = Date.now();
     private isRunning: boolean = false;
 
     constructor(saveManager: SaveManager) {
@@ -107,8 +106,7 @@ export class Game implements IGame {
     start(): void {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.lastUpdate = Date.now();
-        
+
         this.gameLoop.start();
         this.unlocks.resume();
         this.events.resume();
@@ -133,8 +131,7 @@ export class Game implements IGame {
     resume(): void {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.lastUpdate = Date.now();
-        
+
         this.gameLoop.resume();
         this.timers.resumeAllTimers();
         this.unlocks.resume();
@@ -222,7 +219,7 @@ export class Game implements IGame {
 
     calculateOfflineProgress(): void {
         const progress = this.gameState.calculateOfflineProgress(this.entities.getResources());
-        if (progress?.offlineTime > 0) {
+        if (progress && progress.offlineTime !== undefined && progress.offlineTime > 0) {
             Object.entries(progress.resourceGains).forEach(([id, gain]) => {
                 const resource = this.entities.getResourceById(id);
                 if (resource) resource.amount += gain;

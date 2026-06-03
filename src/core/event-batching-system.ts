@@ -216,7 +216,7 @@ export class EventBatchingSystem {
             if (now - this.lastFlushTime >= this.config.flushInterval) {
                 this.flushAll();
             }
-        }, this.config.flushInterval) as number;
+        }, this.config.flushInterval) as unknown as number;
     }
 
     /**

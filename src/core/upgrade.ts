@@ -34,7 +34,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
     currentApplications: number;
     
     // Legacy support
-    effect?: Record<string, unknown>;
+    effect?: (() => void) | Record<string, unknown>;
     cost?: Record<string, number>;
 
     /**
@@ -58,7 +58,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         configuration?: UpgradeConfiguration;
         costs?: CostDefinition[];
         cost?: Record<string, number>; // Legacy support
-        effect?: Record<string, unknown>; // Legacy support
+        effect?: (() => void) | Record<string, unknown>; // Legacy support
         isRepeatable?: boolean;
         maxApplications?: number;
         unlockCondition?: () => boolean;
@@ -207,7 +207,7 @@ export class Upgrade extends BaseEntity implements CostProvider {
         
         // Check prerequisites if defined
         if (this.configuration.prerequisites && this._game?.upgradeEffectProcessor) {
-            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this as unknown);
+            return this._game.upgradeEffectProcessor['checkConditions'](this.configuration.prerequisites, this);
         }
         
         return true;
@@ -352,6 +352,6 @@ export class Upgrade extends BaseEntity implements CostProvider {
      * Gets the game reference
      */
     get game(): Game | undefined {
-        return this._game;
+        return this._game as Game | undefined;
     }
 }

@@ -271,7 +271,7 @@ export class UnlockConditionEvaluator {
 
       case 'time_played': {
         // This would need to be tracked by the game
-        return context.timestamp - (this.game as unknown as { startTime?: number }).startTime || 0;
+        return context.timestamp - ((this.game as unknown as { startTime?: number }).startTime ?? 0) || 0;
       }
 
       case 'entities_unlocked': {
@@ -306,7 +306,7 @@ export class UnlockConditionEvaluator {
         const [entityType, propertyPath] = condition.target.split('.');
         return entities
           .filter(entity => entity.constructor.name.toLowerCase() === entityType.toLowerCase())
-          .reduce((sum, entity) => sum + (this.getNestedProperty(entity, propertyPath) || 0), 0);
+          .reduce((sum, entity) => sum + (Number(this.getNestedProperty(entity, propertyPath)) || 0), 0);
       }
 
       default:
@@ -324,13 +324,13 @@ export class UnlockConditionEvaluator {
       case 'not_equals':
         return actual !== expected;
       case 'greater_than':
-        return actual > expected;
+        return (actual as number) > (expected as number);
       case 'greater_than_or_equal':
-        return actual >= expected;
+        return (actual as number) >= (expected as number);
       case 'less_than':
-        return actual < expected;
+        return (actual as number) < (expected as number);
       case 'less_than_or_equal':
-        return actual <= expected;
+        return (actual as number) <= (expected as number);
       case 'contains':
         return String(actual).includes(String(expected));
       case 'not_contains':
@@ -341,7 +341,7 @@ export class UnlockConditionEvaluator {
         return actual === undefined || actual === null;
       case 'between':
         if (Array.isArray(expected) && expected.length === 2) {
-          return actual >= expected[0] && actual <= expected[1];
+          return (actual as number) >= expected[0] && (actual as number) <= expected[1];
         }
         return false;
       case 'in_list':
@@ -462,7 +462,7 @@ export class UnlockConditionEvaluator {
   /**
    * Get nested property from object
    */
-  private getNestedProperty(obj: Record<string, unknown>, path: string): unknown {
+  private getNestedProperty(obj: object, path: string): unknown {
     return path.split('.').reduce((current: unknown, key: string) => 
       current && typeof current === 'object' && key in (current as Record<string, unknown>) 
         ? (current as Record<string, unknown>)[key] 
