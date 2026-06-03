@@ -42,6 +42,9 @@
     "/dist"
   ],
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "watch": "vite build --watch",
@@ -54,14 +57,14 @@
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@typescript-eslint/eslint-plugin": "^8.34.0",
-    "@typescript-eslint/parser": "^8.34.0",
-    "eslint": "^9.29.0",
-    "jest": "^30.0.0",
-    "jest-environment-node": "^30.0.0",
-    "ts-jest": "^29.4.0",
-    "typescript": "^5.5.3",
-    "vite": "^5.4.8"
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "eslint": "^10.4.1",
+    "jest": "^30.4.2",
+    "jest-environment-node": "^30.4.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
   }
 }

@@ -61,7 +61,7 @@ export class EventManager {
     
     /** Event batching system */
     private eventBatches: Map<string, SystemEvent[]>;
-    private batchTimers: Map<string, NodeJS.Timeout>;
+    private batchTimers: Map<string, ReturnType<typeof setTimeout>>;
     // private batchDelay: number = 10; // ms - Currently unused
     
     /** Event replay system for debugging */
@@ -72,7 +72,7 @@ export class EventManager {
     private errorHandlers: Array<(error: EventError) => void>;
     
     /** Debounce tracking */
-    private debounceTimers: Map<string, NodeJS.Timeout>;
+    private debounceTimers: Map<string, ReturnType<typeof setTimeout>>;
 
     constructor(debugMode: boolean = false) {
         this.globalListeners = new Map();
