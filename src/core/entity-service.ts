@@ -1,4 +1,4 @@
-import { BaseEntity } from './base-entity';
+import { BaseEntity, IGame } from './base-entity';
 import { Resource } from '../entities/resources/resource';
 import { Building } from '../entities/buildings/building';
 import { Storage } from '../entities/buildings/storage';
@@ -117,7 +117,11 @@ export interface IEntityService {
     // Resource-specific methods
     getResourceById(resourceId: string): Resource | undefined;
     getResourceByName(name: string): Resource | undefined;
-    
+
+    // Building / storage lookups
+    getBuildingById(buildingId: string): Building | undefined;
+    getStorageById(storageId: string): Storage | undefined;
+
     // Entity statistics
     getEntityStats(): {
         total: number;
@@ -145,7 +149,7 @@ export class EntityService implements IEntityService {
     private upgrades = new Map<string, Upgrade>();
     private storages = new Map<string, Storage>();
 
-    constructor(private game?: any) {
+    constructor(private game?: IGame) {
         logger.debug('EntityService: Initialized');
     }
 
@@ -278,6 +282,20 @@ export class EntityService implements IEntityService {
      */
     getResourceByName(name: string): Resource | undefined {
         return Array.from(this.resources.values()).find(r => r.name === name);
+    }
+
+    /**
+     * Gets a building by its ID (includes storage buildings)
+     */
+    getBuildingById(buildingId: string): Building | undefined {
+        return this.buildings.get(buildingId);
+    }
+
+    /**
+     * Gets a storage building by its ID
+     */
+    getStorageById(storageId: string): Storage | undefined {
+        return this.storages.get(storageId);
     }
 
     /**

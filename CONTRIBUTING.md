@@ -44,7 +44,6 @@ Place tests in the matching directory:
 - `tests/core/` for core systems
 - `tests/entities/` for entity behaviour
 - `tests/integration/` for multi-component scenarios
-- `tests/performance/` for benchmarks
 
 Update `tests/README.md` when you add a suite.
 

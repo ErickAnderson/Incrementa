@@ -354,4 +354,29 @@ export class Upgrade extends BaseEntity implements CostProvider {
     get game(): Game | undefined {
         return this._game as Game | undefined;
     }
+
+    /**
+     * Serializes the upgrade's application state on top of the base entity
+     * data, so save/load restores how many times it has been applied.
+     */
+    getSaveData(): Record<string, unknown> {
+        return {
+            ...super.getSaveData(),
+            currentApplications: this.currentApplications,
+            isApplied: this.isApplied
+        };
+    }
+
+    /**
+     * Restores upgrade application state from saved data.
+     */
+    loadSaveData(saveData: Record<string, unknown>): void {
+        super.loadSaveData(saveData);
+        if (typeof saveData.currentApplications === 'number') {
+            this.currentApplications = saveData.currentApplications;
+        }
+        if (typeof saveData.isApplied === 'boolean') {
+            this.isApplied = saveData.isApplied;
+        }
+    }
 }

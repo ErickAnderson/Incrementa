@@ -1,6 +1,25 @@
 import { BaseEntity } from './base-entity';
 import { Building } from '../entities/buildings/building';
 import { logger } from '../utils/logger';
+import type { ProductionConfig, ProductionStats } from '../types/production';
+
+/**
+ * The producer surface this service relies on. Implemented by ProducerBuilding
+ * (Miner, Factory). Used to narrow entities instead of casting to any.
+ */
+interface Producer extends BaseEntity {
+    readonly isProducing: boolean;
+    readonly isBuilt: boolean;
+    startProduction(): boolean;
+    stopProduction(): void;
+    getProductionConfig(): ProductionConfig;
+    getProductionStats(): ProductionStats;
+}
+
+/** Type guard: is this entity a production building? */
+function isProducer(entity: BaseEntity): entity is Producer {
+    return entity instanceof Building && 'startProduction' in entity && 'getProductionConfig' in entity;
+}
 
 /**
  * Result of production optimization operation
@@ -71,7 +90,8 @@ export class ProductionService implements IProductionService {
     constructor(
         private getEntities: () => BaseEntity[],
         private getResourceById: (id: string) => { amount: number } | undefined,
-        private hasGlobalCapacity: (resourceId: string, amount: number) => boolean
+        private hasGlobalCapacity: (resourceId: string, amount: number) => boolean,
+        private getTotalCapacityFor: (resourceId: string) => number
     ) {
         logger.debug('ProductionService: Initialized');
     }
@@ -84,16 +104,13 @@ export class ProductionService implements IProductionService {
         const started: BaseEntity[] = [];
 
         for (const entity of entities) {
-            if (entity instanceof Building && entity.isUnlocked && entity.isBuilt) {
-                // Check if it's a producer building with production methods
-                if ('startProduction' in entity && typeof entity.startProduction === 'function') {
-                    if (this.canStartProduction(entity as any)) {
-                        try {
-                            (entity as any).startProduction();
-                            started.push(entity);
-                        } catch (error) {
-                            logger.warn(`ProductionService: Failed to start production for ${entity.name}: ${error}`);
-                        }
+            if (isProducer(entity) && entity.isUnlocked && entity.isBuilt) {
+                if (this.canStartProduction(entity)) {
+                    try {
+                        entity.startProduction();
+                        started.push(entity);
+                    } catch (error) {
+                        logger.warn(`ProductionService: Failed to start production for ${entity.name}: ${error}`);
                     }
                 }
             }
@@ -111,15 +128,12 @@ export class ProductionService implements IProductionService {
         const stopped: BaseEntity[] = [];
 
         for (const entity of entities) {
-            if (entity instanceof Building && entity.isUnlocked) {
-                // Check if it's a producer building with production methods
-                if ('stopProduction' in entity && typeof entity.stopProduction === 'function') {
-                    try {
-                        (entity as any).stopProduction();
-                        stopped.push(entity);
-                    } catch (error) {
-                        logger.warn(`ProductionService: Failed to stop production for ${entity.name}: ${error}`);
-                    }
+            if (isProducer(entity) && entity.isUnlocked) {
+                try {
+                    entity.stopProduction();
+                    stopped.push(entity);
+                } catch (error) {
+                    logger.warn(`ProductionService: Failed to stop production for ${entity.name}: ${error}`);
                 }
             }
         }
@@ -132,11 +146,7 @@ export class ProductionService implements IProductionService {
      * Gets all producer buildings in the game
      */
     getProducerBuildings(): BaseEntity[] {
-        return this.getEntities().filter(entity => 
-            entity instanceof Building && 
-            entity.isUnlocked && 
-            'startProduction' in entity
-        );
+        return this.getEntities().filter(entity => isProducer(entity) && entity.isUnlocked);
     }
 
     /**
@@ -144,7 +154,7 @@ export class ProductionService implements IProductionService {
      */
     getActiveProducers(): BaseEntity[] {
         return this.getProducerBuildings().filter(entity => 
-            'isProducing' in entity && (entity as any).isProducing
+            'isProducing' in entity && (entity as Producer).isProducing
         );
     }
 
@@ -163,16 +173,16 @@ export class ProductionService implements IProductionService {
         for (const producer of producers) {
             // Get production statistics if available
             if ('getProductionStats' in producer) {
-                const stats = (producer as any).getProductionStats();
+                const stats = (producer as Producer).getProductionStats();
                 if (stats) {
-                    totalCyclesCompleted += stats.cyclesCompleted || 0;
-                    totalEfficiency += stats.efficiency || 0;
+                    totalCyclesCompleted += stats.totalCycles || 0;
+                    totalEfficiency += stats.averageEfficiency || 0;
                 }
             }
 
             // Calculate production rates
             if ('getProductionConfig' in producer) {
-                const config = (producer as any).getProductionConfig();
+                const config = (producer as Producer).getProductionConfig();
                 if (config) {
                     // Track output rates
                     if (config.outputs) {
@@ -238,8 +248,8 @@ export class ProductionService implements IProductionService {
                 continue;
             }
 
-            const isProducing = (producer as any).isProducing;
-            const config = (producer as any).getProductionConfig();
+            const isProducing = (producer as Producer).isProducing;
+            const config = (producer as Producer).getProductionConfig();
 
             if (!isProducing) {
                 stoppedProducers.push(producer.id);
@@ -264,11 +274,10 @@ export class ProductionService implements IProductionService {
                         for (const output of config.outputs) {
                             if (!this.hasGlobalCapacity(output.resourceId, output.amount)) {
                                 blockedProducers.push(producer.id);
-                                // Note: We can't easily get total capacity here without additional dependencies
                                 capacityLimits.push({
                                     resourceId: output.resourceId,
                                     attempted: output.amount,
-                                    capacity: 0 // Would need capacity service integration
+                                    capacity: this.getTotalCapacityFor(output.resourceId)
                                 });
                             }
                         }
@@ -297,20 +306,20 @@ export class ProductionService implements IProductionService {
         for (const producer of producers) {
             if (!('isProducing' in producer)) continue;
 
-            const isProducing = (producer as any).isProducing;
+            const isProducing = (producer as Producer).isProducing;
 
-            if (!isProducing && this.canStartProduction(producer as any)) {
+            if (!isProducing && this.canStartProduction(producer as Producer)) {
                 try {
-                    (producer as any).startProduction();
+                    (producer as Producer).startProduction();
                     started++;
                 } catch (error) {
                     logger.warn(`ProductionService: Failed to start production for ${producer.name}: ${error}`);
                 }
-            } else if (isProducing && !this.canContinueProduction(producer as any)) {
+            } else if (isProducing && !this.canContinueProduction(producer as Producer)) {
                 try {
-                    (producer as any).stopProduction();
+                    (producer as Producer).stopProduction();
                     stopped++;
-                    bottlenecks.push(...this.getProductionIssues(producer as any));
+                    bottlenecks.push(...this.getProductionIssues(producer as Producer));
                 } catch (error) {
                     logger.warn(`ProductionService: Failed to stop production for ${producer.name}: ${error}`);
                 }
@@ -329,7 +338,7 @@ export class ProductionService implements IProductionService {
     /**
      * Checks if a producer can start production
      */
-    private canStartProduction(producer: any): boolean {
+    private canStartProduction(producer: Producer): boolean {
         if (!producer.isBuilt) {
             return false;
         }
@@ -355,20 +364,20 @@ export class ProductionService implements IProductionService {
     /**
      * Checks if a producer can continue production
      */
-    private canContinueProduction(producer: any): boolean {
+    private canContinueProduction(producer: Producer): boolean {
         return this.canStartProduction(producer);
     }
 
     /**
      * Checks if producer has required input resources
      */
-    private hasInputResources(producer: any): boolean {
+    private hasInputResources(producer: Producer): boolean {
         const config = producer.getProductionConfig?.();
         if (!config?.inputs) {
             return true; // No inputs required
         }
 
-        return config.inputs.every((input: any) => {
+        return config.inputs.every((input) => {
             const resource = this.getResourceById(input.resourceId);
             return resource && resource.amount >= input.amount;
         });
@@ -377,13 +386,13 @@ export class ProductionService implements IProductionService {
     /**
      * Checks if producer has capacity for outputs
      */
-    private hasOutputCapacity(producer: any): boolean {
+    private hasOutputCapacity(producer: Producer): boolean {
         const config = producer.getProductionConfig?.();
         if (!config?.outputs) {
             return true; // No outputs produced
         }
 
-        return config.outputs.every((output: any) => {
+        return config.outputs.every((output) => {
             return this.hasGlobalCapacity(output.resourceId, output.amount);
         });
     }
@@ -391,7 +400,7 @@ export class ProductionService implements IProductionService {
     /**
      * Gets a list of issues preventing a producer from operating
      */
-    private getProductionIssues(producer: any): string[] {
+    private getProductionIssues(producer: Producer): string[] {
         const issues: string[] = [];
         const config = producer.getProductionConfig?.();
 

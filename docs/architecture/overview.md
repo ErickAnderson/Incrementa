@@ -2,7 +2,7 @@
 
 Incrementa is built with a modern service-oriented architecture that promotes modularity, testability, and maintainability while supporting complex incremental game mechanics.
 
-## 🏗️ High-Level Architecture
+## High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -40,7 +40,7 @@ Incrementa is built with a modern service-oriented architecture that promotes mo
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🎯 Design Principles
+## Design Principles
 
 ### 1. Service-Oriented Architecture
 The framework follows a service-oriented design where each major system is encapsulated in a dedicated service:
@@ -89,7 +89,7 @@ const resource = game.entities.createResource({ name: 'Gold' });
 game.production.startAllProduction();
 ```
 
-## 📦 Core Components
+## Core Components
 
 ### Game Class (`src/core/game.ts`)
 The main entry point and service orchestrator. Reduced from 1,063 lines to 339 lines through service extraction.
@@ -158,7 +158,7 @@ Abstract base class for all game objects with:
 - **Factory** (`src/entities/buildings/factory.ts`) - Resource transformation buildings
 - **Upgrade** (`src/core/upgrade.ts`) - Entity enhancement system
 
-## 🔄 Data Flow
+## Data Flow
 
 ### Game Loop Flow
 ```
@@ -209,7 +209,7 @@ Call building.startProduction()
 Event emission: 'productionStarted'
 ```
 
-## 🚀 Performance Considerations
+## Performance Considerations
 
 ### Caching Strategies
 - **Capacity calculations** cached for 5 seconds
@@ -231,7 +231,7 @@ config: {
 - Only update entities that need active updates
 - Lazy loading of expensive calculations
 
-## 🧪 Testing Architecture
+## Testing Architecture
 
 ### Service Integration Tests
 Each service is tested in isolation and in integration:
@@ -256,7 +256,7 @@ const producers = game.production.startAllProduction();
 expect(producers).toHaveLength(1);
 ```
 
-## 📈 Scalability
+## Scalability
 
 ### Entity Limits
 - Tested with 1000+ resources (7ms creation time)
@@ -268,7 +268,7 @@ expect(producers).toHaveLength(1);
 - Service destruction patterns
 - Event listener cleanup
 
-## 🔌 Extensibility
+## Extensibility
 
 ### Plugin System
 ```typescript

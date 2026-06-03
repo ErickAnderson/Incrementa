@@ -138,7 +138,7 @@ describe('Producer Buildings', () => {
       autoMiner.isUnlocked = true;
 
       autoMiner.startConstruction(false);
-      await fastForward(1000);
+      autoMiner.onUpdate(1000); // loop-driven construction completes, autoStart fires
 
       expect(autoMiner.isCurrentlyProducing()).toBe(true);
     });

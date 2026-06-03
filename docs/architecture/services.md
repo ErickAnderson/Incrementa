@@ -2,7 +2,7 @@
 
 Incrementa's service architecture provides clean separation of concerns while maintaining high performance and backward compatibility. This document details the service-oriented design principles and implementation.
 
-## 🎯 Service Architecture Overview
+## Service Architecture Overview
 
 The framework is built around six core services that handle different aspects of game logic:
 
@@ -39,7 +39,7 @@ The framework is built around six core services that handle different aspects of
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Service Contracts
+## Service Contracts
 
 Each service implements a well-defined interface ensuring consistency and testability:
 
@@ -69,7 +69,7 @@ class ServiceImpl implements IService {
 }
 ```
 
-## 🏗️ EntityService
+## EntityService
 
 **Responsibility**: Entity lifecycle management and CRUD operations  
 **Interface**: [`IEntityService`](../../src/core/entity-service.ts#L65-L88)
@@ -118,7 +118,7 @@ const specificResource = game.entities.getResourceById('gold');
 const gold = game.createResource({ name: 'Gold' });
 ```
 
-## ⚙️ ProductionService
+## ProductionService
 
 **Responsibility**: Production optimization and coordination  
 **Interface**: [`IProductionService`](../../src/core/production-service.ts#L45-L70)
@@ -170,7 +170,7 @@ class ProductionService implements IProductionService {
 - **Bottleneck Detection**: Identify resource and capacity constraints
 - **Statistics Tracking**: Monitor production performance over time
 
-## 📦 CapacityService
+## CapacityService
 
 **Responsibility**: Storage capacity management and calculations  
 **Interface**: [`ICapacityService`](../../src/core/capacity-service.ts#L7-L24)
@@ -273,7 +273,7 @@ class TimerService implements ITimerService {
 - **Performance Metrics**: Track update time and frequency
 - **Bulk Operations**: Pause/resume all timers in single operation
 
-## 🎭 EventService
+## EventService
 
 **Responsibility**: Event system coordination and statistics  
 **Interface**: [`IEventService`](../../src/core/event-service.ts#L7-L25)
@@ -319,7 +319,7 @@ class EventService implements IEventService {
 - **Statistics Tracking**: Monitor event emission frequency and performance
 - **Error Handling**: Graceful handling of event listener errors
 
-## 🔓 UnlockService
+## UnlockService
 
 **Responsibility**: Unlock condition management and progression  
 **Interface**: [`IUnlockService`](../../src/core/unlock-service.ts#L8-L26)
@@ -363,7 +363,7 @@ class UnlockService implements IUnlockService {
 - **Statistics**: Track unlock progression and timing
 - **Event Integration**: Emit unlock events for UI updates
 
-## 🔄 Service Coordination
+## Service Coordination
 
 ### Dependency Management
 Services are initialized in dependency order to ensure proper functionality:
@@ -423,7 +423,7 @@ private wireServices(): void {
 }
 ```
 
-## 📊 Performance Characteristics
+## Performance Characteristics
 
 ### Service Performance Benchmarks
 Based on framework testing with 1000+ entities:
@@ -451,7 +451,7 @@ Based on framework testing with 1000+ entities:
 - **Cache Storage**: ~10KB for typical capacity cache
 - **Event System**: ~5KB for typical listener setup
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Service Unit Testing
 Each service is tested in isolation:
@@ -510,7 +510,7 @@ describe('Service Integration', () => {
 });
 ```
 
-## 🔧 Extension Points
+## Extension Points
 
 ### Custom Services
 The architecture supports custom services:
@@ -578,7 +578,7 @@ class ProductionAnalyticsPlugin implements ServicePlugin {
 }
 ```
 
-## 🚀 Best Practices
+## Best Practices
 
 ### Service Usage Guidelines
 

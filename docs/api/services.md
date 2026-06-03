@@ -2,7 +2,7 @@
 
 This document provides a comprehensive reference for all services in the Incrementa framework. Services provide specialized functionality and can be accessed through the main Game instance.
 
-## 🎯 Service Overview
+## Service Overview
 
 ```typescript
 // Access services through the game instance
@@ -16,7 +16,7 @@ game.unlocks      // UnlockService - Unlock condition management
 
 ---
 
-## 🏗️ EntityService
+## EntityService
 
 **Interface**: `IEntityService`  
 **Implementation**: [`src/core/entity-service.ts`](../../src/core/entity-service.ts)  
@@ -142,7 +142,7 @@ const goldMine = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',
     gatherRate: 5.0,
-    buildTime: 2000,
+    buildTime: 2,
     costs: [{ resourceId: 'gold', amount: 50 }],
     unlockCondition: () => gold.amount >= 25
 });
@@ -155,7 +155,7 @@ const namedResource = game.entities.getResourceByName('Gold');
 
 ---
 
-## ⚙️ ProductionService
+## ProductionService
 
 **Interface**: `IProductionService`  
 **Implementation**: [`src/core/production-service.ts`](../../src/core/production-service.ts)  
@@ -266,7 +266,7 @@ console.log(`Production efficiency: ${stats.averageEfficiency}%`);
 
 ---
 
-## 📦 CapacityService
+## CapacityService
 
 **Interface**: `ICapacityService`  
 **Implementation**: [`src/core/capacity-service.ts`](../../src/core/capacity-service.ts)  
@@ -411,7 +411,7 @@ console.log(`Active timers: ${stats.activeTimers}/${stats.totalTimers}`);
 
 ---
 
-## 🎭 EventService
+## EventService
 
 **Interface**: `IEventService`  
 **Implementation**: [`src/core/event-service.ts`](../../src/core/event-service.ts)  
@@ -487,7 +487,7 @@ console.log(`Events emitted: ${stats.eventsEmitted}`);
 
 ---
 
-## 🔓 UnlockService
+## UnlockService
 
 **Interface**: `IUnlockService`  
 **Implementation**: [`src/core/unlock-service.ts`](../../src/core/unlock-service.ts)  
@@ -568,7 +568,7 @@ game.unlocks.checkUnlockConditions();
 
 ---
 
-## 🔧 Service Integration Examples
+## Service Integration Examples
 
 ### Cross-Service Coordination
 ```typescript

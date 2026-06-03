@@ -162,12 +162,12 @@ describe('Time-Based Integration Scenarios', () => {
       expect(building.isBuilt).toBe(false);
 
       // After 2 seconds - should still be building
-      await fastForward(2000);
+      building.onUpdate(2000);
       expect(building.isBuilding).toBe(true);
       expect(building.isBuilt).toBe(false);
 
       // After 3 seconds - should be complete
-      await fastForward(1000);
+      building.onUpdate(1000);
       expect(building.isBuilding).toBe(false);
       expect(building.isBuilt).toBe(true);
     });
@@ -196,11 +196,11 @@ describe('Time-Based Integration Scenarios', () => {
       expect(game.getTotalCapacityFor('ore')).toBe(0); // Still no capacity
 
       // After 1 second - still building
-      await fastForward(1000);
+      storage.onUpdate(1000);
       expect(game.getTotalCapacityFor('ore')).toBe(0);
 
       // After 2 seconds - construction complete
-      await fastForward(1000);
+      storage.onUpdate(1000);
       expect(storage.isBuilt).toBe(true);
       expect(game.getTotalCapacityFor('ore')).toBe(100); // Now has capacity
     });
@@ -519,7 +519,8 @@ describe('Time-Based Integration Scenarios', () => {
       const completionTimes: Record<string, number> = {};
 
       for (let second = 0; second < 5; second++) {
-        await fastForward(1000);
+        // Construction is driven by the game loop's update tick
+        [miner1, miner2, factory].forEach(b => b.onUpdate(1000));
 
         if (miner1.isBuilt && !completionTimes.miner1) {
           completionTimes.miner1 = second + 1;

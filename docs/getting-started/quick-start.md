@@ -2,7 +2,7 @@
 
 Get up and running with Incrementa in 5 minutes! This guide will walk you through creating your first incremental game with resources, buildings, and production.
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install incrementa
@@ -10,7 +10,7 @@ npm install incrementa
 yarn add incrementa
 ```
 
-## 🚀 Basic Setup
+## Basic Setup
 
 Create a new TypeScript/JavaScript file and import Incrementa:
 
@@ -24,7 +24,7 @@ const saveManager = new SaveManager(localStorage);
 const game = new Game(saveManager);
 ```
 
-## 🎯 Your First Resource
+## Your First Resource
 
 Let's create a basic gold resource with passive generation:
 
@@ -39,7 +39,7 @@ const gold = game.entities.createResource({
 console.log(`Starting gold: ${gold.amount}`);
 ```
 
-## 🏗️ Add a Building
+## Add a Building
 
 Create a building that produces more gold:
 
@@ -48,7 +48,7 @@ const goldMine = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',          // Produces gold
     gatherRate: 5.0,             // 5 gold per second when active
-    buildTime: 2000,             // Takes 2 seconds to build
+    buildTime: 2,                // Takes 2 seconds to build (buildTime is in seconds)
     costs: [
         { resourceId: 'gold', amount: 50 }  // Costs 50 gold to build
     ],
@@ -56,14 +56,14 @@ const goldMine = game.entities.createMiner({
 });
 ```
 
-## 📦 Storage Management
+## Storage Management
 
 Add storage to hold more resources:
 
 ```typescript
 const warehouse = game.entities.createStorage({
     name: 'Warehouse',
-    buildTime: 3000,             // 3 seconds to build
+    buildTime: 3,                // 3 seconds to build
     capacities: {
         gold: 1000,              // Can store 1000 gold
         wood: 500                // Can store 500 wood (for future use)
@@ -74,7 +74,7 @@ const warehouse = game.entities.createStorage({
 });
 ```
 
-## 🔓 Progressive Unlocks
+## Progressive Unlocks
 
 Create content that unlocks as you progress:
 
@@ -83,7 +83,7 @@ const advancedMine = game.entities.createMiner({
     name: 'Advanced Gold Mine',
     resourceId: 'gold',
     gatherRate: 20.0,            // Much faster than basic mine
-    buildTime: 5000,
+    buildTime: 5,
     costs: [
         { resourceId: 'gold', amount: 500 }
     ],
@@ -94,7 +94,7 @@ const advancedMine = game.entities.createMiner({
 });
 ```
 
-## 🎮 Start the Game
+## Start the Game
 
 Start the game loop and begin production:
 
@@ -108,7 +108,7 @@ game.production.startAllProduction();
 console.log('Game started! Watch your gold grow.');
 ```
 
-## 📊 Monitor Progress
+## Monitor Progress
 
 Set up basic monitoring to see what's happening:
 
@@ -128,14 +128,14 @@ setInterval(() => {
 }, 30000);
 ```
 
-## 🔄 Handle Events
+## Handle Events
 
 React to game events for dynamic behavior:
 
 ```typescript
 // Listen for building completion
 game.events.on('buildComplete', (data) => {
-    console.log(`🎉 ${data.building.name} finished building!`);
+    console.log(`${data.building.name} finished building!`);
     
     // Start production automatically
     if ('startProduction' in data.building) {
@@ -145,7 +145,7 @@ game.events.on('buildComplete', (data) => {
 
 // Listen for unlocks
 game.events.on('unlocked', (data) => {
-    console.log(`🔓 ${data.entity.name} is now available!`);
+    console.log(`${data.entity.name} is now available!`);
 });
 
 // Listen for resource changes
@@ -162,7 +162,7 @@ function updateResourceDisplay(resourceId: string, amount: number) {
 }
 ```
 
-## 🏁 Complete Example
+## Complete Example
 
 Here's the complete working example:
 
@@ -185,14 +185,14 @@ const goldMine = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',
     gatherRate: 5.0,
-    buildTime: 2000,
+    buildTime: 2,
     costs: [{ resourceId: 'gold', amount: 50 }],
     autoStart: true
 });
 
 const warehouse = game.entities.createStorage({
     name: 'Warehouse',
-    buildTime: 3000,
+    buildTime: 3,
     capacities: { gold: 1000 },
     costs: [{ resourceId: 'gold', amount: 100 }]
 });
@@ -202,18 +202,18 @@ const advancedMine = game.entities.createMiner({
     name: 'Advanced Gold Mine',
     resourceId: 'gold',
     gatherRate: 20.0,
-    buildTime: 5000,
+    buildTime: 5,
     costs: [{ resourceId: 'gold', amount: 500 }],
     unlockCondition: () => goldMine.isBuilt && gold.amount >= 300
 });
 
 // Event handlers
 game.events.on('buildComplete', (data) => {
-    console.log(`🎉 ${data.building.name} completed!`);
+    console.log(`${data.building.name} completed!`);
 });
 
 game.events.on('unlocked', (data) => {
-    console.log(`🔓 ${data.entity.name} unlocked!`);
+    console.log(`${data.entity.name} unlocked!`);
 });
 
 // Start the game
@@ -233,10 +233,10 @@ setInterval(() => {
 // Auto-save
 setInterval(() => game.saveState(), 30000);
 
-console.log('🎮 Game started! Watch your resources grow!');
+console.log('Game started! Watch your resources grow!');
 ```
 
-## 🎨 Add a Simple UI
+## Add a Simple UI
 
 Create a basic HTML interface:
 
@@ -369,7 +369,7 @@ game.events.on('unlocked', (data) => {
 updateUI();
 ```
 
-## 🎯 Next Steps
+## Next Steps
 
 Now that you have a basic game running, explore these advanced features:
 
@@ -379,7 +379,7 @@ Now that you have a basic game running, explore these advanced features:
 4. **[UI Integration](../advanced/ui-integration.md)** - Build more sophisticated interfaces
 5. **[Examples](../examples/)** - See complete game implementations
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Game Not Starting
 ```typescript

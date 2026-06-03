@@ -2,7 +2,7 @@
 
 This guide covers different ways to install and set up Incrementa for your incremental game project.
 
-## 📦 Package Manager Installation
+## Package Manager Installation
 
 ### NPM
 ```bash
@@ -19,7 +19,7 @@ yarn add incrementa
 pnpm add incrementa
 ```
 
-## 🚀 Project Setup Options
+## Project Setup Options
 
 ### 1. Create New Project with Vite (Recommended)
 
@@ -82,7 +82,7 @@ cd my-game
 npm install incrementa
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### TypeScript Configuration
 
@@ -131,7 +131,7 @@ export default defineConfig({
 });
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ### Recommended Structure
 
@@ -196,7 +196,7 @@ export class GameManager {
 }
 ```
 
-## 🌐 CDN Usage (Browser)
+## CDN Usage (Browser)
 
 For quick prototyping or simple setups, you can use Incrementa via CDN:
 
@@ -225,7 +225,7 @@ For quick prototyping or simple setups, you can use Incrementa via CDN:
 </html>
 ```
 
-## 🔍 Verification
+## Verification
 
 ### Test Installation
 
@@ -275,7 +275,7 @@ npm run build
 ng build
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -396,7 +396,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 ```
 
-## 📚 Next Steps
+## Next Steps
 
 After successful installation:
 
@@ -405,7 +405,7 @@ After successful installation:
 3. **[Architecture Overview](../architecture/overview.md)** - Understand the framework
 4. **[API Reference](../api/)** - Explore all available features
 
-## 💬 Getting Help
+## Getting Help
 
 If you encounter issues during installation:
 

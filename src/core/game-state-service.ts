@@ -4,12 +4,35 @@ import { logger } from "../utils/logger";
 import { IGame } from "./game-aware";
 
 /**
+ * A serialized entity, produced by BaseEntity.getSaveData(). Carries the entity
+ * id and type plus whatever per-type state each entity persists (resource
+ * amounts, building level and construction state, upgrade applications, ...).
+ */
+export interface SerializedEntity {
+    id: string;
+    entityType?: string;
+    isUnlocked?: boolean;
+    [key: string]: unknown;
+}
+
+/**
+ * The persisted game-state payload.
+ */
+export interface GameSaveData {
+    entities: SerializedEntity[];
+    gameSpeed: number;
+    totalGameTime: number;
+    plugins: Record<string, unknown>;
+    metadata?: { version: string; timestamp: number; totalGameTime: number };
+}
+
+/**
  * Interface for the game state service
  */
 export interface IGameStateService {
-    saveState(data: any): void;
-    loadState(game?: IGame): any;
-    calculateOfflineProgress(resources: any[]): { offlineTime: number; resourceGains: Record<string, number> } | null;
+    saveState(data: GameSaveData): void;
+    loadState(game?: IGame): GameSaveData | null;
+    calculateOfflineProgress(resources: Array<{ id: string; isUnlocked: boolean; rate?: number }>): { offlineTime: number; resourceGains: Record<string, number> } | null;
     getTotalGameTime(): number;
     setTotalGameTime(time: number): void;
     resetGameTime(): void;
@@ -54,31 +77,24 @@ export class GameStateService implements IGameStateService {
      * Saves the current game state to persistent storage
      * @param data - The game state data to save
      */
-    saveState(data: any): void {
+    saveState(data: GameSaveData): void {
         try {
             logger.info('GameStateService: Starting game state save');
 
-            // Create the game state object using the provided data
-            const gameState = {
+            // Entities arrive already serialized via getSaveData(), so the full
+            // per-entity state (resource amounts, building level and
+            // construction state, upgrade applications) is persisted - not just
+            // id and isUnlocked.
+            const gameState: GameSaveData = {
                 metadata: {
                     version: '1.0.0',
                     timestamp: Date.now(),
-                    totalGameTime: this.totalGameTime
+                    totalGameTime: data.totalGameTime ?? this.totalGameTime
                 },
-                entities: (data.entities || []).map((entity: any) => ({
-                    id: entity.id,
-                    type: entity.constructor.name,
-                    isUnlocked: entity.isUnlocked,
-                    // Add other serializable properties as needed
-                })),
-                resources: (data.resources || []).map((resource: any) => ({
-                    id: resource.id,
-                    amount: resource.amount,
-                    isUnlocked: resource.isUnlocked
-                })),
-                gameSpeed: data.gameSpeed || 1.0,
-                totalGameTime: data.totalGameTime || this.totalGameTime,
-                plugins: data.plugins || {}
+                entities: data.entities || [],
+                gameSpeed: data.gameSpeed ?? 1.0,
+                totalGameTime: data.totalGameTime ?? this.totalGameTime,
+                plugins: data.plugins ?? {}
             };
 
             // Save to persistent storage
@@ -103,7 +119,7 @@ export class GameStateService implements IGameStateService {
      * Loads game state from persistent storage
      * @param game - The game instance to load into
      */
-    loadState(game?: IGame): any {
+    loadState(game?: IGame): GameSaveData | null {
         try {
             logger.info('GameStateService: Starting game state load');
 
@@ -143,6 +159,7 @@ export class GameStateService implements IGameStateService {
             this.loadCount++;
 
             logger.info(`GameStateService: Game state loaded successfully (${(gameState.entities as unknown[])?.length || 0} entities)`);
+            return gameState as unknown as GameSaveData;
         } catch (error) {
             logger.error(`GameStateService: Failed to load game state: ${error}`);
             throw new Error(`Load operation failed: ${error}`);
@@ -154,7 +171,7 @@ export class GameStateService implements IGameStateService {
      * @param resources - Array of resources to calculate offline progress for
      * @returns Offline progress data or null if no progress to apply
      */
-    calculateOfflineProgress(resources: any[]): { offlineTime: number; resourceGains: Record<string, number> } | null {
+    calculateOfflineProgress(resources: Array<{ id: string; isUnlocked: boolean; rate?: number }>): { offlineTime: number; resourceGains: Record<string, number> } | null {
         try {
             const metadataData = this.saveManager.loadData('metadata');
             if (!metadataData) {

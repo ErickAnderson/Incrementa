@@ -2,7 +2,7 @@
 
 This document provides a comprehensive reference for all entity classes in the Incrementa framework. Entities are the core building blocks of incremental games, representing resources, buildings, upgrades, and other game objects.
 
-## 🎯 Entity Hierarchy
+## Entity Hierarchy
 
 ```
 BaseEntity (Abstract)
@@ -17,7 +17,7 @@ BaseEntity (Abstract)
 
 ---
 
-## 🏗️ BaseEntity (Abstract)
+## BaseEntity (Abstract)
 
 **File**: [`src/core/base-entity.ts`](../../src/core/base-entity.ts)
 
@@ -100,7 +100,7 @@ console.log(resource.game === game); // true
 
 ---
 
-## 💰 Resource
+## Resource
 
 **File**: [`src/entities/resources/resource.ts`](../../src/entities/resources/resource.ts)
 
@@ -244,7 +244,7 @@ if (gold.canIncrement(500)) {
 
 ---
 
-## 🏢 Building
+## Building
 
 **File**: [`src/entities/buildings/building.ts`](../../src/entities/buildings/building.ts)
 
@@ -254,7 +254,7 @@ Base class for all constructible structures in the game.
 ```typescript
 class Building extends BaseEntity {
     readonly costs: CostDefinition[];     // Construction costs
-    readonly buildTime: number;           // Time to construct (ms)
+    readonly buildTime: number;           // Time to construct (seconds)
     readonly level: number;               // Building level/tier
     
     isBuilding: boolean = false;          // Currently under construction
@@ -358,7 +358,7 @@ interface BuildingConfig {
 const workshop = game.entities.createBuilding({
     name: 'Workshop',
     description: 'Basic crafting facility',
-    buildTime: 5000,  // 5 seconds
+    buildTime: 5,  // 5 seconds
     costs: [
         { resourceId: 'wood', amount: 10 },
         { resourceId: 'stone', amount: 5 }
@@ -392,7 +392,7 @@ console.log(workshop.buildProgress); // 0.0 - 1.0
 
 ---
 
-## ⛏️ Miner
+## Miner
 
 **File**: [`src/entities/buildings/miner.ts`](../../src/entities/buildings/miner.ts)
 
@@ -510,7 +510,7 @@ const goldMine = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',
     gatherRate: 5.0,       // 5 gold per second
-    buildTime: 3000,       // 3 seconds to build
+    buildTime: 3,       // 3 seconds to build
     efficiency: 1.0,       // 100% efficiency
     autoStart: true,       // Start producing when built
     costs: [
@@ -547,7 +547,7 @@ if (goldMine.canProduce()) {
 
 ---
 
-## 🏭 Factory
+## Factory
 
 **File**: [`src/entities/buildings/factory.ts`](../../src/entities/buildings/factory.ts)
 
@@ -679,7 +679,7 @@ interface FactoryConfig {
 const bakery = game.entities.createFactory({
     name: 'Bakery',
     description: 'Converts wheat into bread',
-    buildTime: 5000,
+    buildTime: 5,
     cycleTime: 2000,        // 2 seconds per bread
     inputs: [
         { resourceId: 'wheat', amount: 2 },
@@ -719,7 +719,7 @@ console.log('Cycles completed:', stats.cyclesCompleted);
 
 ---
 
-## 📦 Storage
+## Storage
 
 **File**: [`src/entities/buildings/storage.ts`](../../src/entities/buildings/storage.ts)
 
@@ -842,7 +842,7 @@ interface StorageConfig {
 const warehouse = game.entities.createStorage({
     name: 'Warehouse',
     description: 'Large storage facility',
-    buildTime: 8000,
+    buildTime: 8,
     capacities: {
         wood: 1000,
         stone: 500,
@@ -880,7 +880,7 @@ console.log(`Wood storage: ${woodUtilization * 100}% full`);
 
 ---
 
-## ⬆️ Upgrade
+## Upgrade
 
 **File**: [`src/core/upgrade.ts`](../../src/core/upgrade.ts)
 
@@ -1082,7 +1082,7 @@ game.events.on('upgradePurchased', (data) => {
 
 ---
 
-## 👷 Worker
+## Worker
 
 **File**: [`src/entities/workers/worker.ts`](../../src/entities/workers/worker.ts)
 
@@ -1202,7 +1202,7 @@ console.log(`Total work time: ${stats.totalWorkTime}s`);
 
 ---
 
-## 🔧 Entity Utilities
+## Entity Utilities
 
 ### Entity Factory Methods
 

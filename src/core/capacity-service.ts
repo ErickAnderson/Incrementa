@@ -28,9 +28,10 @@ export interface ICapacityService {
  * Extracted from Game class to reduce god class anti-pattern
  */
 export class CapacityService implements ICapacityService {
+    // Total capacity only changes when storage is built/removed or a capacity
+    // changes, so the cache is invalidated by those events (see
+    // Game.wireServices) rather than expiring on a timer.
     private capacityCache = new Map<string, number>();
-    private cacheValidUntil = 0;
-    private readonly CACHE_DURATION = 5000; // 5 seconds
 
     constructor(
         private getStorages: () => Storage[],
@@ -43,9 +44,7 @@ export class CapacityService implements ICapacityService {
      * Gets total capacity for a resource across all storage buildings
      */
     getTotalCapacityFor(resourceId: string): number {
-        // Check cache first
-        const now = Date.now();
-        if (now < this.cacheValidUntil && this.capacityCache.has(resourceId)) {
+        if (this.capacityCache.has(resourceId)) {
             return this.capacityCache.get(resourceId)!;
         }
 
@@ -66,9 +65,7 @@ export class CapacityService implements ICapacityService {
         // resource. That is reported as 0 here; the "unlimited" interpretation
         // lives in hasGlobalCapacity / getRemainingCapacityFor.
 
-        // Update cache
         this.capacityCache.set(resourceId, totalCapacity);
-        this.cacheValidUntil = now + this.CACHE_DURATION;
 
         logger.debug(`CapacityService: Total capacity for ${resourceId}: ${totalCapacity}`);
         return totalCapacity;
@@ -127,19 +124,15 @@ export class CapacityService implements ICapacityService {
      */
     invalidateCache(): void {
         this.capacityCache.clear();
-        this.cacheValidUntil = 0;
         logger.debug('CapacityService: Cache invalidated');
     }
 
     /**
-     * Performs maintenance operations like cache cleanup
+     * Performs per-frame maintenance. The capacity cache is invalidated by
+     * build and capacity events, so there is no timer-based cleanup to do here.
      */
     performMaintenance(): void {
-        const now = Date.now();
-        if (now >= this.cacheValidUntil) {
-            this.capacityCache.clear();
-            logger.debug('CapacityService: Cache expired and cleared during maintenance');
-        }
+        // Intentionally empty: cache invalidation is event-driven.
     }
 
     /**
@@ -147,14 +140,12 @@ export class CapacityService implements ICapacityService {
      */
     getCapacityStats(): {
         cachedResources: number;
-        cacheValidUntil: number;
         totalStorages: number;
         builtStorages: number;
     } {
         const storages = this.getStorages();
         return {
             cachedResources: this.capacityCache.size,
-            cacheValidUntil: this.cacheValidUntil,
             totalStorages: storages.length,
             builtStorages: storages.filter(s => s.isBuilt).length
         };
@@ -165,7 +156,6 @@ export class CapacityService implements ICapacityService {
      */
     destroy(): void {
         this.capacityCache.clear();
-        this.cacheValidUntil = 0;
         logger.info('CapacityService: Destroyed and cache cleared');
     }
 }

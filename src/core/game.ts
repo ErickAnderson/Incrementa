@@ -17,7 +17,7 @@ import { TimerService, ITimerService } from "./timer-service";
 import { EventService, IEventService } from "./event-service";
 import { UnlockService, IUnlockService } from "./unlock-service";
 import { GameLoopService, IGameLoopService } from "./game-loop-service";
-import { GameStateService, IGameStateService } from "./game-state-service";
+import { GameStateService, IGameStateService, SerializedEntity } from "./game-state-service";
 
 // Legacy imports for essential compatibility
 import { EventStats } from "./event-manager";
@@ -76,7 +76,8 @@ export class Game implements IGame {
         this.production = new ProductionService(
             () => this.entities.getAllEntities(),
             (id) => this.entities.getResourceById(id),
-            (resourceId, amount) => this.capacity.hasGlobalCapacity(resourceId, amount)
+            (resourceId, amount) => this.capacity.hasGlobalCapacity(resourceId, amount),
+            (resourceId) => this.capacity.getTotalCapacityFor(resourceId)
         );
         this.timers = new TimerService();
         this.unlocks = new UnlockService(this);
@@ -182,8 +183,8 @@ export class Game implements IGame {
 
     saveState(): void {
         this.gameState.saveState({
-            entities: this.entities.getAllEntities(),
-            resources: this.entities.getResources(),
+            // Each entity serializes its own full state via getSaveData().
+            entities: this.entities.getAllEntities().map(entity => entity.getSaveData()) as SerializedEntity[],
             gameSpeed: this.gameSpeed,
             totalGameTime: this.totalGameTime,
             plugins: this.pluginSystem.getPluginSaveData()
@@ -197,24 +198,16 @@ export class Game implements IGame {
         if (state.gameSpeed !== undefined) this.gameSpeed = state.gameSpeed;
         if (state.totalGameTime !== undefined) this.totalGameTime = state.totalGameTime;
 
-        if (state.resources) {
-            state.resources.forEach((saved: any) => {
-                const resource = this.entities.getResourceById(saved.id);
-                if (resource) {
-                    resource.amount = saved.amount;
-                    resource.isUnlocked = saved.isUnlocked;
-                }
-            });
-        }
-
-        if (state.entities) {
-            state.entities.forEach((saved: any) => {
+        // Restore each entity's full state through its loadSaveData hook
+        // (resource amounts, building level/construction, upgrade applications).
+        if (Array.isArray(state.entities)) {
+            state.entities.forEach(saved => {
                 const entity = this.entities.getEntityById(saved.id);
-                if (entity) entity.isUnlocked = saved.isUnlocked;
+                if (entity) entity.loadSaveData(saved);
             });
         }
 
-        if (state.plugins) this.pluginSystem.loadPluginSaveData(state.plugins);
+        if (state.plugins) this.pluginSystem.loadPluginSaveData(state.plugins as Record<string, Record<string, unknown>>);
     }
 
     calculateOfflineProgress(): void {

@@ -200,7 +200,7 @@ describe('Storage Entity', () => {
       
       expect(storage.isBuilt).toBe(false);
       
-      await fastForward(storage.buildTime * 1000);
+      storage.onUpdate(storage.buildTime * 1000); // loop-driven construction
       
       expect(storage.isBuilt).toBe(true);
     });
@@ -230,7 +230,7 @@ describe('Storage Entity', () => {
     test('should contribute to game capacity when built', async () => {
       storage.startConstruction(false); // Debug mode for test
       
-      await fastForward(storage.buildTime * 1000);
+      storage.onUpdate(storage.buildTime * 1000); // loop-driven construction
       
       // Now game should count this storage's capacity
       const gameCapacity = game.getTotalCapacityFor('ore');

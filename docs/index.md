@@ -4,7 +4,7 @@
 
 Welcome to the comprehensive documentation for Incrementa! This framework provides everything you need to build scalable, performant incremental games with modern development practices.
 
-## 🚀 Quick Navigation
+## Quick Navigation
 
 ### New to Incrementa?
 - **[Quick Start Guide](./getting-started/quick-start.md)** - Build your first game in 5 minutes
@@ -22,7 +22,7 @@ Welcome to the comprehensive documentation for Incrementa! This framework provid
 - **[Performance Guide](./advanced/performance.md)** - Scaling to large games
 - **[Plugin System](./advanced/plugins.md)** - Extending functionality
 
-## 🎯 Framework Highlights
+## Framework Highlights
 
 ### Modern Service Architecture
 Incrementa uses a service-oriented architecture that eliminates god classes while maintaining backward compatibility:
@@ -40,12 +40,12 @@ game.getTotalCapacityFor('gold');
 ```
 
 ### Six Core Services
-- **🏗️ EntityService** - Entity CRUD operations and factory methods
-- **⚙️ ProductionService** - Production optimization and management
-- **📦 CapacityService** - Storage capacity calculations with caching
+- **EntityService** - Entity CRUD operations and factory methods
+- **ProductionService** - Production optimization and management
+- **CapacityService** - Storage capacity calculations with caching
 - **⏰ TimerService** - Timer coordination and performance tracking
-- **🎭 EventService** - Event system interface and statistics
-- **🔓 UnlockService** - Unlock condition management and progression
+- **EventService** - Event system interface and statistics
+- **UnlockService** - Unlock condition management and progression
 
 ### Performance-First Design
 - **68% Code Reduction**: Game class reduced from 1,063 to 339 lines
@@ -55,12 +55,12 @@ game.getTotalCapacityFor('gold');
 
 ### Framework-Agnostic UI
 Works seamlessly with any frontend framework:
-- ✅ React, Vue, Angular, Svelte
-- ✅ Vanilla JavaScript/TypeScript
-- ✅ Event-driven updates for reactive frameworks
-- ✅ No UI dependencies or assumptions
+- React, Vue, Angular, Svelte
+- Vanilla JavaScript/TypeScript
+- Event-driven updates for reactive frameworks
+- No UI dependencies or assumptions
 
-## 📚 Documentation Sections
+## Documentation Sections
 
 ### Getting Started
 Learn the basics and get your first game running quickly.
@@ -143,7 +143,7 @@ Contribute to the framework and follow best practices.
 | [Benchmarks](./development/benchmarks.md) | Performance testing | Performance-focused |
 | [Standards](./development/standards.md) | Code conventions | Contributors |
 
-## 🎮 Framework Philosophy
+## Framework Philosophy
 
 ### Design Principles
 
@@ -192,7 +192,7 @@ Provide excellent TypeScript support and clear APIs:
 - Intuitive method naming
 - Consistent patterns across services
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
 Framework performance tested with large-scale scenarios:
 
@@ -208,7 +208,7 @@ Framework performance tested with large-scale scenarios:
 
 See [Performance Guide](./advanced/performance.md) for detailed benchmarks and optimization strategies.
 
-## 🔗 Useful Links
+## Useful Links
 
 ### Framework Resources
 - **[GitHub Repository](https://github.com/your-org/incrementa)** - Source code and issues
@@ -226,14 +226,14 @@ See [Performance Guide](./advanced/performance.md) for detailed benchmarks and o
 - **[Chrome DevTools Extension](#)** - Game debugging tools
 - **[Performance Profiler](#)** - Frame-by-frame analysis
 
-## 🚦 Getting Started Checklist
+## Getting Started Checklist
 
 Ready to build your incremental game? Follow this checklist:
 
 ### Prerequisites
-- ✅ Node.js 16.0.0 or higher
-- ✅ Basic TypeScript/JavaScript knowledge
-- ✅ Text editor or IDE (VS Code recommended)
+- Node.js 16.0.0 or higher
+- Basic TypeScript/JavaScript knowledge
+- Text editor or IDE (VS Code recommended)
 
 ### Setup Steps
 1. **[Install Incrementa](./getting-started/installation.md)** - Package manager setup
@@ -249,7 +249,7 @@ Ready to build your incremental game? Follow this checklist:
 
 ---
 
-## 📝 Documentation Notes
+## Documentation Notes
 
 This documentation covers **Incrementa v0.1.0** and the new service-oriented architecture. 
 

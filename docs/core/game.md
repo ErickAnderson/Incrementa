@@ -4,7 +4,7 @@ The `Game` class is the main entry point and orchestrator for the Incrementa fra
 
 > **File Location**: [`src/core/game.ts`](../../src/core/game.ts)
 
-## 🎯 Overview
+## Overview
 
 The Game class serves as:
 - **Service Orchestrator** - Coordinates all framework services
@@ -12,7 +12,7 @@ The Game class serves as:
 - **Lifecycle Manager** - Handles game start/pause/destroy operations
 - **Event Hub** - Central point for game-wide event coordination
 
-## 🏗️ Architecture
+## Architecture
 
 ### Service-Based Design
 ```typescript
@@ -35,7 +35,7 @@ export class Game implements IGame {
 }
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Basic Game Setup
 ```typescript
@@ -62,7 +62,7 @@ const goldMiner = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',
     gatherRate: 5.0, // Gold per second when active
-    buildTime: 2000, // 2 seconds to build
+    buildTime: 2, // 2 seconds to build
     costs: [{ resourceId: 'gold', amount: 50 }]
 });
 
@@ -73,7 +73,7 @@ game.start();
 game.production.startAllProduction();
 ```
 
-## 📋 Core Methods
+## Core Methods
 
 ### Lifecycle Management
 
@@ -162,7 +162,7 @@ game.calculateOfflineProgress();
 // Applies resource gains based on time offline
 ```
 
-## 🔧 Service APIs
+## Service APIs
 
 ### Entity Management
 ```typescript
@@ -175,7 +175,7 @@ const resource = game.entities.createResource({
 
 const building = game.entities.createBuilding({
     name: 'Workshop',
-    buildTime: 5000,
+    buildTime: 5,
     costs: [{ resourceId: 'wood', amount: 10 }]
 });
 
@@ -261,7 +261,7 @@ game.unlocks.unlockEntity('advanced-building');
 const unlockStats = game.unlocks.getUnlockStats();
 ```
 
-## 🔄 Legacy API Support
+## Legacy API Support
 
 For backward compatibility, all legacy methods are preserved:
 
@@ -287,7 +287,7 @@ game.unlockManager.getStats();       // → game.unlocks.getUnlockStats()
 game.eventManager.emit('event');     // → game.events.emit('event')
 ```
 
-## 🎮 Complete Game Example
+## Complete Game Example
 
 ```typescript
 import { Game, SaveManager } from 'incrementa';
@@ -313,7 +313,7 @@ const goldMine = game.entities.createMiner({
     name: 'Gold Mine',
     resourceId: 'gold',
     gatherRate: 5.0,
-    buildTime: 2000,
+    buildTime: 2,
     costs: [{ resourceId: 'gold', amount: 50 }]
 });
 
@@ -323,7 +323,7 @@ const warehouse = game.entities.createStorage({
         gold: 1000,
         wood: 500 
     },
-    buildTime: 3000,
+    buildTime: 3,
     costs: [{ resourceId: 'gold', amount: 100 }]
 });
 
@@ -369,7 +369,7 @@ function showNotification(message: string) {
 }
 ```
 
-## ⚡ Performance Tips
+## Performance Tips
 
 ### Efficient Resource Management
 ```typescript
@@ -404,7 +404,7 @@ console.log('Entity count:', metrics.entities.total);
 const recommendations = game.performanceMonitor.getOptimizationRecommendations(metrics);
 ```
 
-## 🐛 Debugging
+## Debugging
 
 ### Game State Inspection
 ```typescript

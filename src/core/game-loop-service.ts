@@ -98,8 +98,8 @@ export class GameLoopService implements IGameLoopService {
      * @param speed - Speed multiplier (1.0 = normal speed, 2.0 = double speed, 0.5 = half speed)
      */
     setSpeed(speed: number): void {
-        if (speed < 0) {
-            logger.warn('GameLoopService: Speed cannot be negative, ignoring');
+        if (speed <= 0) {
+            logger.warn('GameLoopService: Speed must be greater than 0, ignoring');
             return;
         }
 

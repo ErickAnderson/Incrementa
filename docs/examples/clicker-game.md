@@ -4,7 +4,7 @@ This tutorial walks through creating a complete incremental clicker game using I
 
 > **Live Example**: Check out the [`examples/hello-world`](../../examples/hello-world/) directory for a complete implementation.
 
-## 🎯 Game Overview
+## Game Overview
 
 We'll create "Cookie Empire" with these features:
 - Manual cookie clicking
@@ -14,7 +14,7 @@ We'll create "Cookie Empire" with these features:
 - Save/load functionality
 - Responsive UI
 
-## 🏗️ Project Setup
+## Project Setup
 
 ### 1. Initialize Project
 ```bash
@@ -55,7 +55,7 @@ export default defineConfig({
 });
 ```
 
-## 🎮 Core Game Logic
+## Core Game Logic
 
 ### 1. Game Initialization
 
@@ -443,7 +443,7 @@ export class CookieGame {
 }
 ```
 
-## 🎨 User Interface
+## User Interface
 
 ### 1. HTML Structure
 
@@ -460,7 +460,7 @@ export class CookieGame {
 <body>
     <div id="app">
         <header>
-            <h1>🍪 Cookie Empire</h1>
+            <h1>Cookie Empire</h1>
             <div class="stats">
                 <div class="stat">
                     <span class="label">Cookies:</span>
@@ -482,8 +482,7 @@ export class CookieGame {
                 <!-- Cookie Clicker -->
                 <div class="cookie-section">
                     <div id="cookie-button" class="cookie">
-                        🍪
-                    </div>
+                                            </div>
                     <div id="click-effects"></div>
                 </div>
 
@@ -1004,11 +1003,11 @@ class CookieGameUI {
     }
 
     private showAchievement(achievement: any) {
-        this.showNotification(`🏆 Achievement Unlocked: ${achievement.name}!`);
+        this.showNotification(`Achievement Unlocked: ${achievement.name}!`);
     }
 
     private showPrestigeNotification(data: any) {
-        this.showNotification(`✨ Prestiged! Gained ${data.prestigeGain} prestige points!`);
+        this.showNotification(`Prestiged! Gained ${data.prestigeGain} prestige points!`);
     }
 
     private showNotification(message: string) {
@@ -1052,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 ```
 
-## 🚀 Running the Game
+## Running the Game
 
 1. **Start development server:**
 ```bash
@@ -1068,7 +1067,7 @@ Navigate to `http://localhost:5173`
 - Purchase upgrades to increase efficiency
 - Work towards prestige for permanent bonuses
 
-## 🎯 Features Explained
+## Features Explained
 
 ### Manual Clicking System
 The cookie clicking provides immediate feedback with visual effects and scales with purchased upgrades.
@@ -1085,7 +1084,7 @@ Players can reset progress for permanent bonuses, providing long-term progressio
 ### Save/Load System
 Game state persists between sessions using the Incrementa save system plus custom data storage.
 
-## 🔧 Customization Ideas
+## Customization Ideas
 
 ### Additional Buildings
 ```typescript
@@ -1129,7 +1128,7 @@ const grandmaUpgrade = this.game.entities.createUpgrade({
 });
 ```
 
-## 📚 Next Steps
+## Next Steps
 
 1. **Add more building types** with unique mechanics
 2. **Implement achievement system** with rewards

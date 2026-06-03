@@ -1,6 +1,7 @@
 import { UnlockManager } from './unlock-manager';
 import { BaseEntity } from './base-entity';
 import { logger } from '../utils/logger';
+import type { UnlockManagerStats } from '../types/unlock-conditions';
 
 /**
  * Interface for the unlock service
@@ -13,7 +14,7 @@ export interface IUnlockService {
     removeUnlockCondition(entityId: string): void;
 
     // Statistics and monitoring
-    getUnlockStats(): any;
+    getUnlockStats(): UnlockManagerStats;
     
     // Manager access
     getUnlockManager(): UnlockManager;
@@ -74,7 +75,7 @@ export class UnlockService implements IUnlockService {
     /**
      * Gets unlock statistics from the unlock manager
      */
-    getUnlockStats(): any {
+    getUnlockStats(): UnlockManagerStats {
         return this.unlockManager.getStats();
     }
 
@@ -128,7 +129,7 @@ export class UnlockService implements IUnlockService {
      * Gets detailed unlock statistics for monitoring
      */
     getDetailedStats(): {
-        unlockStats: any;
+        unlockStats: UnlockManagerStats;
         totalEntities: number;
         unlockedEntities: number;
         pendingUnlocks: number;

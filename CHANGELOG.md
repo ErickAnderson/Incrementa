@@ -27,5 +27,5 @@ First public release.
 
 - Factory methods now register created entities with the event and unlock systems, so unlock conditions evaluate correctly.
 - Capacity cache invalidates on construction completion and capacity changes.
-- Resolved all TypeScript strict-mode errors and brought the test suite to passing (243 tests across 13 suites).
+- Resolved all TypeScript strict-mode errors and brought the test suite to passing (230 tests across 12 suites).
 - Corrected the package `exports` map and `types` entry so the published package is installable with working type declarations.

@@ -78,6 +78,11 @@ energy.increment(10);
 energy.decrement(3);
 ```
 
+Passive generation: a resource has two independent per-second generation fields, both applied automatically by the game loop. Use one of them, not both, to avoid stacking:
+
+- `basePassiveRate` - the resource's own inherent trickle (for example mana regen). Applied through the resource's update hook.
+- `rate` - a generation rate driven by the game loop. Set this when production or upgrades adjust a resource's rate over time.
+
 ### Buildings and producers
 
 Buildings have a construction lifecycle and structured costs. Miners extract a resource over time; factories convert inputs to outputs.
@@ -202,11 +207,14 @@ Additional documentation lives in `docs/`:
 - `docs/api/` - entity and service reference
 - `docs/examples/` - worked examples
 
-A runnable example is in `examples/deepcore-driller`.
+Runnable examples are in `examples/`:
+
+- `examples/e2e-sim` - a headless end-to-end showcase that builds a full production chain and asserts its own invariants (see its README).
+- `examples/deepcore-driller` - a browser game built on the framework.
 
 ## Testing
 
-Incrementa follows test-driven development. The suite covers core systems, entities, integration scenarios, and performance.
+Incrementa follows test-driven development. The suite covers core systems, entities, and integration scenarios.
 
 ```bash
 npm test              # run all tests
@@ -214,7 +222,7 @@ npm run test:coverage # coverage report
 npm run test:watch    # watch mode
 ```
 
-Current status: 243 tests across 13 suites.
+Current status: 230 tests across 12 suites.
 
 ## Contributing
 

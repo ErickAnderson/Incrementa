@@ -2,7 +2,7 @@
 
 Welcome to the comprehensive documentation for Incrementa, a TypeScript framework for building incremental/idle games. This documentation provides everything you need to understand, use, and extend the framework.
 
-## 📚 Table of Contents
+## Table of Contents
 
 ### Getting Started
 - [Quick Start Guide](./getting-started/quick-start.md) - Get up and running in 5 minutes
@@ -54,7 +54,7 @@ Welcome to the comprehensive documentation for Incrementa, a TypeScript framewor
 - [Performance Benchmarks](./development/benchmarks.md) - Performance testing
 - [Code Standards](./development/standards.md) - Coding conventions
 
-## 🚀 Framework Highlights
+## Framework Highlights
 
 ### Modern Service Architecture
 Incrementa uses a service-oriented architecture that provides clean separation of concerns while maintaining backward compatibility:
@@ -90,7 +90,7 @@ game.getTotalCapacityFor('gold');
 - Event-driven updates for reactive UI frameworks
 - No UI dependencies or assumptions
 
-## 📋 Quick Reference
+## Quick Reference
 
 ### Essential Classes
 - `Game` - Main orchestrator and entry point
@@ -107,7 +107,7 @@ game.getTotalCapacityFor('gold');
 - `unlocked` - Entity becomes available
 - `productionStarted/Stopped` - Production state changes
 
-## 🔗 External Links
+## External Links
 - [GitHub Repository](https://github.com/your-org/incrementa)
 - [Examples Collection](../examples/)
 - [NPM Package](https://npmjs.com/package/incrementa)
