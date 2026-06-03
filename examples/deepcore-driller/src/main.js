@@ -1,16 +1,15 @@
 /**
  * DeepCore Driller - A comprehensive showcase of the Incrementa framework
  *
- * This game demonstrates ALL major Incrementa features:
- * - Resource management with CapacityManager
- * - Timed production with ProductionManager
- * - Cost system with CostDefinition and scaling
+ * This game demonstrates the major Incrementa features:
+ * - Resource management with capacity limits
+ * - Timed, automated production
+ * - Cost system with scaling
  * - Storage systems with overflow protection
- * - Upgrade system with UpgradeEffectProcessor
- * - Event-driven architecture with EventManager
+ * - Data-driven upgrade system
+ * - Event-driven architecture
  * - Plugin system for extensibility
  * - Performance monitoring
- * - Entity registry pattern
  * - Save/Load functionality
  * - Win conditions and game progression
  */

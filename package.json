@@ -17,9 +17,9 @@
   "license": "MIT",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/incrementa.js",
-      "require": "./dist/incrementa.umd.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/incrementa.umd.cjs"
     }
   },
   "files": [

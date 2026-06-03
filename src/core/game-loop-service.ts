@@ -70,7 +70,7 @@ export class GameLoopService implements IGameLoopService {
         this._isRunning = false;
         
         if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
+            this.cancelFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
 
@@ -222,6 +222,31 @@ export class GameLoopService implements IGameLoopService {
         }
 
         this.lastUpdateTime = currentTime;
-        this.animationFrameId = requestAnimationFrame(this.loop);
+        this.animationFrameId = this.scheduleFrame();
     };
+
+    /**
+     * Schedules the next frame. Uses requestAnimationFrame in browser
+     * environments and falls back to setTimeout (~60fps) elsewhere, so the
+     * loop works in headless contexts such as servers or tests.
+     */
+    private scheduleFrame(): number {
+        const raf = (globalThis as { requestAnimationFrame?: (cb: () => void) => number }).requestAnimationFrame;
+        if (typeof raf === 'function') {
+            return raf(this.loop);
+        }
+        return setTimeout(this.loop, 16) as unknown as number;
+    }
+
+    /**
+     * Cancels a scheduled frame using the matching cancellation function.
+     */
+    private cancelFrame(id: number): void {
+        const caf = (globalThis as { cancelAnimationFrame?: (id: number) => void }).cancelAnimationFrame;
+        if (typeof caf === 'function') {
+            caf(id);
+        } else {
+            clearTimeout(id);
+        }
+    }
 }
